@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'DM Sans', sans-serif;
+    --font-display: 'Outfit', sans-serif;
+
+    /* Theme: Dark Navy (#1F4E79) and White */
+    --background: 210 20% 98%;
+    --foreground: 209 59% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 209 59% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 209 59% 15%;
+
+    /* Dark Navy Primary: #1F4E79 */
+    --primary: 209 59% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Soft Gray/Blue */
+    --secondary: 210 24% 90%;
+    --secondary-foreground: 209 59% 25%;
+
+    --muted: 210 24% 90%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent: Light Gold/Amber for contrast #F59E0B */
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 209 59% 30%;
+
+    --radius: 0.75rem;
+
+    /* Deep Navy Sidebar */
+    --sidebar-background: 209 59% 20%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 209 59% 20%;
+    --sidebar-accent: 209 59% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 209 59% 15%;
+    --sidebar-ring: 209 59% 40%;
+    
+    /* Elevation Utilities */
+    --elevate-1: rgba(0, 0, 0, 0.04);
+    --elevate-2: rgba(0, 0, 0, 0.08);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    @apply transition-all duration-300 ease-out;
+  }
+  .hover-elevate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(31, 78, 121, 0.1), 0 8px 10px -6px rgba(31, 78, 121, 0.1);
+  }
+  .active-elevate-2:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 6px -1px rgba(31, 78, 121, 0.1), 0 2px 4px -2px rgba(31, 78, 121, 0.1);
+  }
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+}
