@@ -15,6 +15,7 @@ import AdoptionPortal from "./pages/AdoptionPortal";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminPanel from "./pages/AdminPanel";
+import { RequireAuth } from "./components/RequireAuth";
 
 function Router() {
   return (
@@ -22,9 +23,15 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/disease-detection" component={DiseaseDetection} />
-        <Route path="/ngo-locator" component={NgoLocator} />
-        <Route path="/cases" component={CaseTracker} />
-        <Route path="/adoption" component={AdoptionPortal} />
+        <Route path="/ngo-locator">
+          <RequireAuth><NgoLocator /></RequireAuth>
+        </Route>
+        <Route path="/cases">
+          <RequireAuth><CaseTracker /></RequireAuth>
+        </Route>
+        <Route path="/adoption">
+          <RequireAuth><AdoptionPortal /></RequireAuth>
+        </Route>
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/admin" component={AdminPanel} />

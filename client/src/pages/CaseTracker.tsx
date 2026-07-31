@@ -71,8 +71,8 @@ export default function CaseTracker() {
     const fetchData = async () => {
       try {
         const [casesRes, clustersRes] = await Promise.all([
-          fetch(`${FLASK_API_URL}/cases`),
-          fetch(`${FLASK_API_URL}/clusters`),
+          fetch(`${FLASK_API_URL}/cases`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${FLASK_API_URL}/clusters`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (!casesRes.ok) throw new Error(`Server responded with ${casesRes.status}`);
 
@@ -92,7 +92,7 @@ export default function CaseTracker() {
     };
 
     fetchData();
-  }, []);
+  }, [token]);
 
   const filteredCases = cases.filter(c => 
     String(c.id).includes(searchTerm.toLowerCase()) ||
