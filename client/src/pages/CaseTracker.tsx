@@ -195,6 +195,7 @@ export default function CaseTracker() {
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="font-bold py-4">Case ID</TableHead>
+                <TableHead className="font-bold">Photo</TableHead>
                 <TableHead className="font-bold">Detected Condition</TableHead>
                 <TableHead className="font-bold">AI Confidence</TableHead>
                 <TableHead className="font-bold">Location</TableHead>
@@ -206,7 +207,7 @@ export default function CaseTracker() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-40 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-40 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <Loader2 className="w-8 h-8 animate-spin opacity-40" />
                       <p>Loading cases...</p>
@@ -215,7 +216,7 @@ export default function CaseTracker() {
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-40 text-center text-destructive">
+                  <TableCell colSpan={8} className="h-40 text-center text-destructive">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="w-8 h-8 opacity-60" />
                       <p>{error}</p>
@@ -224,7 +225,7 @@ export default function CaseTracker() {
                 </TableRow>
               ) : filteredCases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-40 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-40 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="w-8 h-8 opacity-20" />
                       <p>No rescue cases found matching your search.</p>
@@ -235,6 +236,21 @@ export default function CaseTracker() {
                 filteredCases.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium py-4">RC-{String(c.id).padStart(3, "0")}</TableCell>
+                    <TableCell>
+                      <a
+                        href={`${FLASK_API_URL}/uploads/${c.filename}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Click to view full-size photo"
+                      >
+                        <img
+                          src={`${FLASK_API_URL}/uploads/${c.filename}`}
+                          alt={`Case ${c.id} photo`}
+                          className="w-12 h-12 rounded-lg object-cover border border-border hover:opacity-80 transition-opacity"
+                          loading="lazy"
+                        />
+                      </a>
+                    </TableCell>
                     <TableCell>
                       {c.prediction}
                       {c.is_uncertain && (
