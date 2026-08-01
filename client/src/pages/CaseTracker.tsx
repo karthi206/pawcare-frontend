@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, AlertCircle, Loader2, Table as TableIcon, Map as MapIcon, Stethoscope } from "lucide-react";
+import { Search, AlertCircle, Loader2, Table as TableIcon, Map as MapIcon, Stethoscope, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,6 +64,7 @@ export default function CaseTracker() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; caseId: number } | null>(null);
 
   const isVerifiedVet = user?.role === "vet" && user?.is_verified;
 
@@ -93,6 +94,16 @@ export default function CaseTracker() {
 
     fetchData();
   }, [token]);
+
+  // Close the lightbox on Escape key
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImage(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxImage]);
 
   const filteredCases = cases.filter(c => 
     String(c.id).includes(searchTerm.toLowerCase()) ||
@@ -237,19 +248,19 @@ export default function CaseTracker() {
                   <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium py-4">RC-{String(c.id).padStart(3, "0")}</TableCell>
                     <TableCell>
-                      <a
-                        href={`${FLASK_API_URL}/uploads/${c.filename}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <img
+                        src={`${FLASK_API_URL}/uploads/${c.filename}`}
+                        alt={`Case ${c.id} photo`}
+                        className="w-12 h-12 rounded-lg object-cover border border-border hover:opacity-80 transition-opacity cursor-pointer"
+                        loading="lazy"
                         title="Click to view full-size photo"
-                      >
-                        <img
-                          src={`${FLASK_API_URL}/uploads/${c.filename}`}
-                          alt={`Case ${c.id} photo`}
-                          className="w-12 h-12 rounded-lg object-cover border border-border hover:opacity-80 transition-opacity"
-                          loading="lazy"
-                        />
-                      </a>
+                        onClick={() =>
+                          setLightboxImage({
+                            src: `${FLASK_API_URL}/uploads/${c.filename}`,
+                            caseId: c.id,
+                          })
+                        }
+                      />
                     </TableCell>
                     <TableCell>
                       {c.prediction}
@@ -303,6 +314,27 @@ export default function CaseTracker() {
           </Table>
         </CardContent>
       </Card>
+      )}
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={lightboxImage.src}
+            alt={`Case ${lightboxImage.caseId} full photo`}
+            className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   );
