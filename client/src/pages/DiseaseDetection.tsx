@@ -133,6 +133,7 @@ export default function DiseaseDetection() {
 
     setIsSyncing(true);
     const stillQueued: QueuedUpload[] = [];
+    let successCount = 0;
 
     for (const item of queue) {
       try {
@@ -146,11 +147,23 @@ export default function DiseaseDetection() {
           body: formData,
         });
 
+        if (response.status === 422) {
+          // Permanent rejection (e.g. not recognized as a dog) — retrying won't ever help,
+          // so don't re-queue it. Tell the person clearly instead of silently failing forever.
+          const data = await response.json().catch(() => null);
+          toast({
+            title: "One queued upload couldn't be processed",
+            description: data?.message || "This photo wasn't recognized as a dog and won't be retried.",
+            variant: "destructive",
+          });
+          continue; // don't push to stillQueued — drop it, and don't count it as a success
+        }
+
         if (!response.ok) throw new Error("Sync failed for this item");
-        // Successfully synced - don't add it back to stillQueued
+        successCount++; // Successfully synced - don't add it back to stillQueued
       } catch (err) {
         console.error("Failed to sync queued upload:", err);
-        stillQueued.push(item); // keep it queued, try again next time
+        stillQueued.push(item); // genuine network/server failure - keep it queued, try again next time
       }
     }
 
@@ -158,10 +171,10 @@ export default function DiseaseDetection() {
     setQueuedUploads(stillQueued);
     setIsSyncing(false);
 
-    if (stillQueued.length < queue.length) {
+    if (successCount > 0) {
       toast({
         title: "Synced offline uploads",
-        description: `${queue.length - stillQueued.length} case(s) uploaded successfully.`,
+        description: `${successCount} case(s) uploaded successfully.`,
       });
     }
   };

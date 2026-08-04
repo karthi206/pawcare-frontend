@@ -110,6 +110,55 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/cases" onClick={() => setIsMenuOpen(false)}>
               <Button className="w-full bg-[#1F4E79] h-12 rounded-xl text-lg font-bold">Report an Animal</Button>
             </Link>
+
+            <div className="border-t border-border pt-4 mt-2">
+              {user ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
+                    {user.role === "vet" ? <Stethoscope className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />}
+                    {user.username}
+                    {user.role === "vet" && !user.is_verified && (
+                      <span className="text-xs text-amber-600">(pending)</span>
+                    )}
+                  </div>
+                  {user.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-lg font-bold p-2 text-amber-600"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full gap-1.5"
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Log out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-lg font-bold p-2 text-muted-foreground"
+                  >
+                    Log in
+                  </Link>
+                  <Link href="/register" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full bg-[#1F4E79] hover:bg-[#1F4E79]/90 text-white rounded-xl h-12 font-bold">
+                      Sign up
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </nav>
