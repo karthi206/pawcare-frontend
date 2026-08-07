@@ -117,7 +117,7 @@ export default function AdoptionPortal() {
               <Card className="overflow-hidden border-border/50 hover-elevate group">
                 <div className="aspect-[4/5] relative">
                   <img
-                    src={pet.image_filename ? `${API_URL}/uploads/${pet.image_filename}` : PLACEHOLDER_IMAGE}
+                    src={pet.image_filename || PLACEHOLDER_IMAGE}
                     alt={pet.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
