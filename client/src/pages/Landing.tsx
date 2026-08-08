@@ -37,8 +37,8 @@ export default function Landing() {
 
   return (
     <div className="min-h-full pb-16">
-      {/* Hero Section - pulled up behind the sticky header so the image shows through it */}
-      <div className="relative -mt-16 h-[60vh] min-h-[500px] w-full flex items-center overflow-hidden rounded-b-[2.5rem] shadow-xl z-0">
+      {/* Hero Section - Fixed Padding & Height to fit Header and Buttons properly */}
+      <div className="relative -mt-16 pt-28 pb-12 min-h-[600px] w-full flex items-center overflow-hidden rounded-b-[2.5rem] shadow-xl z-0">
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1920&q=80" 
@@ -82,6 +82,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Features Section */}
       <div className="px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">Complete Care Ecosystem</h2>
