@@ -249,14 +249,14 @@ export default function CaseTracker() {
                     <TableCell className="font-medium py-4">RC-{String(c.id).padStart(3, "0")}</TableCell>
                     <TableCell>
                       <img
-                        src={`${FLASK_API_URL}/uploads/${c.filename}`}
+                        src={c.filename.startsWith('http') ? c.filename : `${FLASK_API_URL}/uploads/${c.filename}`}
                         alt={`Case ${c.id} photo`}
                         className="w-12 h-12 rounded-lg object-cover border border-border hover:opacity-80 transition-opacity cursor-pointer"
                         loading="lazy"
                         title="Click to view full-size photo"
                         onClick={() =>
                           setLightboxImage({
-                            src: `${FLASK_API_URL}/uploads/${c.filename}`,
+                            src: c.filename.startsWith('http') ? c.filename : `${FLASK_API_URL}/uploads/${c.filename}`,
                             caseId: c.id,
                           })
                         }
