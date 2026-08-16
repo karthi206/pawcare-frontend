@@ -7,7 +7,7 @@ import { Upload, AlertCircle, CheckCircle2, Info, MapPin, WifiOff, RefreshCw, Cl
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL as FLASK_API_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api-client";
 
 // Maps a raw model prediction label to display info.
 // The Flask model only returns { prediction, confidence } - it doesn't know
@@ -142,10 +142,27 @@ export default function DiseaseDetection() {
         formData.append("image", file);
         formData.append("location", item.location);
 
-        const response = await fetch(`${FLASK_API_URL}/upload`, {
+        // NOTE: /upload now requires login (@jwt_required() on the backend).
+        // apiFetch sends the httpOnly auth cookie + CSRF header automatically.
+        // If the person's session expired while they were offline, this will
+        // come back 401 rather than succeeding silently — see the catch
+        // block below, which now treats 401 the same as a permanent failure
+        // rather than endlessly retrying a request that can never succeed
+        // until they log back in.
+        const response = await apiFetch("/upload", {
           method: "POST",
           body: formData,
         });
+
+        if (response.status === 401) {
+          toast({
+            title: "Please log in to sync your offline uploads",
+            description: "Your session expired while you were offline. Log back in and these will sync automatically.",
+            variant: "destructive",
+          });
+          stillQueued.push(item); // keep it queued - retry once they're logged in again
+          continue;
+        }
 
         if (response.status === 422) {
           // Permanent rejection (e.g. not recognized as a dog) — retrying won't ever help,
@@ -222,10 +239,23 @@ export default function DiseaseDetection() {
     formData.append("location", location);
 
     try {
-      const response = await fetch(`${FLASK_API_URL}/upload`, {
+      // /upload requires login now — apiFetch sends the httpOnly auth
+      // cookie automatically (credentials: 'include'), so nothing else
+      // needs to change here versus the old anonymous upload flow.
+      const response = await apiFetch("/upload", {
         method: "POST",
         body: formData,
       });
+
+      if (response.status === 401) {
+        toast({
+          title: "Please log in",
+          description: "You need to be logged in to submit a case for analysis.",
+          variant: "destructive",
+        });
+        setIsAnalyzing(false);
+        return;
+      }
 
       // Special case: 422 means the backend rejected the image as "not a dog"
       if (response.status === 422) {
