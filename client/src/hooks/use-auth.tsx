@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-import { API_URL as FLASK_API_URL } from "@/lib/config";
-const TOKEN_STORAGE_KEY = "pawcare_auth_token";
+import { apiFetch } from "@/lib/api-client";
 
 interface User {
   id: number;
@@ -16,11 +15,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string; message?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -37,34 +35,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On app load, check if a token was saved from a previous session and restore it
+  // On app load, ask the backend if the browser is carrying a valid auth
+  // cookie. There's no token in localStorage to check anymore — the cookie
+  // (invisible to JS) is sent automatically by the browser if present.
   useEffect(() => {
-    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (savedToken) {
-      fetchCurrentUser(savedToken);
-    } else {
-      setIsLoading(false);
-    }
+    fetchCurrentUser();
   }, []);
 
-  const fetchCurrentUser = async (authToken: string) => {
+  const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(`${FLASK_API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const response = await apiFetch("/auth/me");
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        setToken(authToken);
       } else {
-        // Token invalid/expired - clear it
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        setUser(null);
       }
     } catch (err) {
       console.error("Failed to fetch current user:", err);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch(`${FLASK_API_URL}/auth/login`, {
+      const response = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -83,8 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || "Login failed" };
       }
 
-      localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-      setToken(data.access_token);
+      // The backend sets the auth cookie itself via Set-Cookie on this
+      // response — there's nothing for the frontend to store.
       setUser(data.user);
       return { success: true };
     } catch (err) {
@@ -94,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (registerData: RegisterData) => {
     try {
-      const response = await fetch(`${FLASK_API_URL}/auth/register`, {
+      const response = await apiFetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registerData),
@@ -111,14 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Failed to log out cleanly:", err);
+    } finally {
+      // Clear client state regardless of whether the network call
+      // succeeded, so the UI never gets stuck showing a logged-in user.
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
