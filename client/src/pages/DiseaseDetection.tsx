@@ -25,6 +25,18 @@ const DISEASE_INFO: Record<string, { severity: "Low" | "Moderate" | "Critical"; 
     severity: "Critical",
     recommendation: "Possible fungal infection detected. This is contagious to other animals and humans - isolate the animal and seek veterinary attention promptly.",
   },
+  Fungal_infections: {
+    severity: "Critical",
+    recommendation: "Signs of a fungal infection detected. This may be contagious - isolate the animal and seek prompt veterinary attention.",
+  },
+  Hypersensitivity: {
+    severity: "Moderate",
+    recommendation: "Signs of an allergic or hypersensitivity reaction detected. A veterinarian can help identify the trigger and recommend treatment.",
+  },
+  demodicosis: {
+    severity: "Moderate",
+    recommendation: "Signs of demodectic mange detected. This isn't contagious but should be examined and treated by a veterinarian.",
+  },
 };
 
 interface QueuedUpload {
