@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, setCsrfToken } from "@/lib/api-client";
 
 interface User {
   id: number;
@@ -49,13 +49,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiFetch("/auth/me");
       if (response.ok) {
         const userData = await response.json();
+        if (userData.csrf_token) {
+          setCsrfToken(userData.csrf_token);
+        }
         setUser(userData);
       } else {
         setUser(null);
+        setCsrfToken(null);
       }
     } catch (err) {
       console.error("Failed to fetch current user:", err);
       setUser(null);
+      setCsrfToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -74,8 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || "Login failed" };
       }
 
-      // The backend sets the auth cookie itself via Set-Cookie on this
-      // response — there's nothing for the frontend to store.
+      if (data.csrf_token) {
+        setCsrfToken(data.csrf_token);
+      }
       setUser(data.user);
       return { success: true };
     } catch (err) {
@@ -111,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear client state regardless of whether the network call
       // succeeded, so the UI never gets stuck showing a logged-in user.
       setUser(null);
+      setCsrfToken(null);
     }
   };
 

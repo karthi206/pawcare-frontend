@@ -3,15 +3,36 @@ import { API_URL as FLASK_API_URL } from "@/lib/config";
 const CSRF_COOKIE_NAME = "csrf_access_token";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+let cachedCsrfToken: string | null =
+  typeof window !== "undefined" ? sessionStorage.getItem("pawcare_csrf_token") : null;
+
 /**
- * Reads a cookie value by name. Only works for cookies NOT marked httpOnly —
- * the JWT itself is httpOnly and deliberately invisible to JS; this cookie
- * exists specifically so the frontend CAN read it and echo it back as a
- * header (the CSRF "double submit" pattern).
+ * Stores or clears the cached CSRF token.
  */
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+export function setCsrfToken(token: string | null): void {
+  cachedCsrfToken = token;
+  if (typeof window !== "undefined") {
+    if (token) {
+      sessionStorage.setItem("pawcare_csrf_token", token);
+    } else {
+      sessionStorage.removeItem("pawcare_csrf_token");
+    }
+  }
+}
+
+/**
+ * Reads the CSRF token from document.cookie, falling back to cached/sessionStorage.
+ */
+export function getCsrfToken(): string | null {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE_NAME}=([^;]*)`));
+    const cookieVal = match ? decodeURIComponent(match[1]) : null;
+    if (cookieVal) {
+      setCsrfToken(cookieVal);
+      return cookieVal;
+    }
+  }
+  return cachedCsrfToken;
 }
 
 /**
@@ -19,24 +40,21 @@ function readCookie(name: string): string | null {
  *
  * - Always sends credentials, so the httpOnly auth cookie is included.
  * - For state-changing requests (POST/PUT/PATCH/DELETE), attaches the
- *   X-CSRF-TOKEN header the backend requires alongside the cookie.
- * - `path` should start with "/", e.g. apiFetch("/cases").
- *
- * Any existing component that manually did:
- *   fetch(`${FLASK_API_URL}/cases`, { headers: { Authorization: `Bearer ${token}` } })
- * should be updated to:
- *   apiFetch("/cases")
- * — the token/localStorage pattern this replaces no longer works, since the
- * token is no longer accessible to JavaScript at all.
+ *   X-CSRF-TOKEN header and injects csrf_token into FormData if applicable.
  */
 export function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method || "GET").toUpperCase();
   const headers = new Headers(options.headers);
 
   if (MUTATING_METHODS.has(method)) {
-    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    const csrfToken = getCsrfToken();
     if (csrfToken) {
       headers.set("X-CSRF-TOKEN", csrfToken);
+
+      // Also append to FormData for multipart/form-data upload requests
+      if (options.body instanceof FormData && !options.body.has("csrf_token")) {
+        options.body.append("csrf_token", csrfToken);
+      }
     }
   }
 
@@ -45,4 +63,4 @@ export function apiFetch(path: string, options: RequestInit = {}): Promise<Respo
     headers,
     credentials: "include",
   });
-}
+}

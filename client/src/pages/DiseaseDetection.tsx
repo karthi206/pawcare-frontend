@@ -260,9 +260,10 @@ export default function DiseaseDetection() {
       });
 
       if (response.status === 401) {
+        const errorData = await response.json().catch(() => null);
         toast({
-          title: "Please log in",
-          description: "You need to be logged in to submit a case for analysis.",
+          title: "Authentication Required",
+          description: errorData?.msg || errorData?.message || errorData?.error || "You need to be logged in to submit a case for analysis.",
           variant: "destructive",
         });
         setIsAnalyzing(false);
