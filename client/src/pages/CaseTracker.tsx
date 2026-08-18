@@ -16,8 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import CaseMap from "@/components/CaseMap";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-
-import { API_URL as FLASK_API_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api-client";
 
 const DISEASE_OPTIONS = ["Dermatitis", "Fungal_infections", "Healthy", "Hypersensitivity", "demodicosis", "ringworm"];
 
@@ -56,7 +55,7 @@ interface Cluster {
 }
 
 export default function CaseTracker() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [cases, setCases] = useState<Case[]>([]);
@@ -72,8 +71,8 @@ export default function CaseTracker() {
     const fetchData = async () => {
       try {
         const [casesRes, clustersRes] = await Promise.all([
-          fetch(`${FLASK_API_URL}/cases`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${FLASK_API_URL}/clusters`, { headers: { Authorization: `Bearer ${token}` } }),
+          apiFetch("/cases"),
+          apiFetch("/clusters"),
         ]);
         if (!casesRes.ok) throw new Error(`Server responded with ${casesRes.status}`);
 
@@ -93,7 +92,7 @@ export default function CaseTracker() {
     };
 
     fetchData();
-  }, [token]);
+  }, []);
 
   // Close the lightbox on Escape key
   useEffect(() => {
@@ -114,11 +113,10 @@ export default function CaseTracker() {
   // Called when a vet selects the correct disease for a case
   const handleVetReview = async (caseId: number, correctedLabel: string) => {
     try {
-      const response = await fetch(`${FLASK_API_URL}/cases/${caseId}/status`, {
+      const response = await apiFetch(`/cases/${caseId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
           status: "vet_confirmed",

@@ -8,8 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, XCircle, Stethoscope, ShieldAlert, Loader2, PawPrint, Upload, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-
-import { API_URL as FLASK_API_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api-client";
 
 interface PendingVet {
   id: number;
@@ -21,7 +20,7 @@ interface PendingVet {
 }
 
 export default function AdminPanel() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [pendingVets, setPendingVets] = useState<PendingVet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,9 +47,7 @@ export default function AdminPanel() {
 
   const fetchPendingVets = async () => {
     try {
-      const response = await fetch(`${FLASK_API_URL}/admin/pending-vets`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch("/admin/pending-vets");
       if (response.ok) {
         setPendingVets(await response.json());
       }
@@ -64,9 +61,8 @@ export default function AdminPanel() {
   const handleDecision = async (vetId: number, username: string, action: "approve" | "reject") => {
     setProcessingId(vetId);
     try {
-      const response = await fetch(`${FLASK_API_URL}/admin/vets/${vetId}/${action}`, {
+      const response = await apiFetch(`/admin/vets/${vetId}/${action}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error("Action failed");
@@ -130,9 +126,8 @@ export default function AdminPanel() {
       formData.append("is_vaccinated", String(petVaccinated));
       if (petImage) formData.append("image", petImage);
 
-      const response = await fetch(`${FLASK_API_URL}/pets`, {
+      const response = await apiFetch("/pets", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 

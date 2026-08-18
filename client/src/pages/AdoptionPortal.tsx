@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, CheckCircle2, PawPrint, Loader2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { API_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Pet {
@@ -25,7 +25,7 @@ const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1543466835-00a7907e
 
 export default function AdoptionPortal() {
   const { toast } = useToast();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const [pets, setPets] = useState<Pet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,9 +34,7 @@ export default function AdoptionPortal() {
   const [requestingId, setRequestingId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/pets`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch("/pets")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load pets");
         return res.json();
@@ -44,7 +42,7 @@ export default function AdoptionPortal() {
       .then(setPets)
       .catch(() => setError("Could not load pets. Is the backend running?"))
       .finally(() => setIsLoading(false));
-  }, [token]);
+  }, []);
 
   const handleAdopt = async (pet: Pet) => {
     if (!user) {
@@ -58,12 +56,8 @@ export default function AdoptionPortal() {
 
     setRequestingId(pet.id);
     try {
-      const response = await fetch(`${API_URL}/pets/${pet.id}/adopt`, {
+      const response = await apiFetch(`/pets/${pet.id}/adopt`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       const data = await response.json();

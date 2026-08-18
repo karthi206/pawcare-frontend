@@ -14,4 +14,4 @@
 // localhost:5173 and 127.0.0.1:5000 are different origins/ports — see
 // vite.config.ts for a local dev proxy if you want the same first-party
 // cookie behavior locally that the Vercel /api rewrite gives you in prod.
-export const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+export const API_URL = import.meta.env.VITE_API_URL || "/api";

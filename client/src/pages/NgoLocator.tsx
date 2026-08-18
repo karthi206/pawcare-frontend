@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { API_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
 // Same Leaflet icon fix used in CaseMap.tsx - required once per file that renders markers
@@ -30,7 +30,7 @@ interface Ngo {
 
 export default function NgoLocator() {
   const { toast } = useToast();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const [ngos, setNgos] = useState<Ngo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,9 +39,7 @@ export default function NgoLocator() {
   const [notifyingId, setNotifyingId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/ngos`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch("/ngos")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load NGOs");
         return res.json();
@@ -49,7 +47,7 @@ export default function NgoLocator() {
       .then(setNgos)
       .catch(() => setError("Could not load NGOs. Is the backend running?"))
       .finally(() => setIsLoading(false));
-  }, [token]);
+  }, []);
 
   const handleNotify = async (ngo: Ngo) => {
     if (!user) {
@@ -63,13 +61,12 @@ export default function NgoLocator() {
 
     setNotifyingId(ngo.id);
     try {
-      const response = await fetch(`${API_URL}/ngos/${ngo.id}/notify`, {
+      const response = await apiFetch(`/ngos/${ngo.id}/notify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ message: `Alert for injured/sick animal reported near ${ngo.name}` }),
       });
 
       if (!response.ok) throw new Error("Notify failed");
