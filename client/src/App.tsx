@@ -22,9 +22,7 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Landing} />
-        <Route path="/disease-detection">
-          <RequireAuth><DiseaseDetection /></RequireAuth>
-        </Route>
+        <Route path="/disease-detection" component={DiseaseDetection} />
         <Route path="/ngo-locator">
           <RequireAuth><NgoLocator /></RequireAuth>
         </Route>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 
 // Maps a raw model prediction label to display info.
 // The Flask model only returns { prediction, confidence } - it doesn't know
@@ -50,6 +51,7 @@ interface QueuedUpload {
 const QUEUE_STORAGE_KEY = "pawcare_offline_queue";
 
 export default function DiseaseDetection() {
+  const { user } = useAuth();
   const [, navigate] = useLocation(); // wouter's navigation function (ignoring path, we already use "location" for GPS)
   const [image, setImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -154,27 +156,12 @@ export default function DiseaseDetection() {
         formData.append("image", file);
         formData.append("location", item.location);
 
-        // NOTE: /upload now requires login (@jwt_required() on the backend).
-        // apiFetch sends the httpOnly auth cookie + CSRF header automatically.
-        // If the person's session expired while they were offline, this will
-        // come back 401 rather than succeeding silently — see the catch
-        // block below, which now treats 401 the same as a permanent failure
-        // rather than endlessly retrying a request that can never succeed
-        // until they log back in.
+        // /upload supports both guest and authenticated uploads.
+        // apiFetch sends the httpOnly auth cookie + CSRF header automatically if logged in.
         const response = await apiFetch("/upload", {
           method: "POST",
           body: formData,
         });
-
-        if (response.status === 401) {
-          toast({
-            title: "Please log in to sync your offline uploads",
-            description: "Your session expired while you were offline. Log back in and these will sync automatically.",
-            variant: "destructive",
-          });
-          stillQueued.push(item); // keep it queued - retry once they're logged in again
-          continue;
-        }
 
         if (response.status === 422) {
           // Permanent rejection (e.g. not recognized as a dog) — retrying won't ever help,
@@ -245,30 +232,17 @@ export default function DiseaseDetection() {
 
     setIsAnalyzing(true);
 
-    // Build the multipart form data - same shape as the curl -F test you ran earlier
+    // Build the multipart form data
     const formData = new FormData();
     formData.append("image", imageFile);
     formData.append("location", location);
 
     try {
-      // /upload requires login now — apiFetch sends the httpOnly auth
-      // cookie automatically (credentials: 'include'), so nothing else
-      // needs to change here versus the old anonymous upload flow.
+      // /upload is publicly accessible for predictions. If logged in, the case is saved to the user account.
       const response = await apiFetch("/upload", {
         method: "POST",
         body: formData,
       });
-
-      if (response.status === 401) {
-        const errorData = await response.json().catch(() => null);
-        toast({
-          title: "Authentication Required",
-          description: errorData?.msg || errorData?.message || errorData?.error || "You need to be logged in to submit a case for analysis.",
-          variant: "destructive",
-        });
-        setIsAnalyzing(false);
-        return;
-      }
 
       // Special case: 422 means the backend rejected the image as "not a dog"
       if (response.status === 422) {
@@ -306,7 +280,9 @@ export default function DiseaseDetection() {
 
       toast({
         title: "Analysis Complete",
-        description: "AI has identified a potential skin condition.",
+        description: data.case_id
+          ? "AI diagnosis complete. Case recorded to your account."
+          : "AI diagnosis complete.",
       });
     } catch (error) {
       console.error("Prediction failed:", error);
