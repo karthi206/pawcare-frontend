@@ -52,6 +52,8 @@ interface Cluster {
   case_ids: number[];
   center_lat: number;
   center_lon: number;
+  weighted_score?: number;
+  vet_confirmed_count?: number;
 }
 
 export default function CaseTracker() {

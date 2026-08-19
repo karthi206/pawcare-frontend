@@ -30,6 +30,8 @@ interface Cluster {
   case_ids: number[];
   center_lat: number;
   center_lon: number;
+  weighted_score?: number;
+  vet_confirmed_count?: number;
 }
 
 interface CaseMapProps {
@@ -90,9 +92,15 @@ export default function CaseMap({ cases, clusters }: CaseMapProps) {
             }}
           >
             <Popup>
-              <div className="text-sm">
-                <p className="font-bold text-red-600">⚠ Possible {cluster.disease} outbreak</p>
-                <p>{cluster.case_count} cases reported in this area</p>
+              <div className="text-sm space-y-1">
+                <p className="font-bold text-red-600">⚠ Potential {cluster.disease} Outbreak</p>
+                <p className="text-xs text-muted-foreground">Cases in cluster: <span className="font-semibold text-foreground">{cluster.case_count}</span></p>
+                {cluster.vet_confirmed_count !== undefined && (
+                  <p className="text-xs text-muted-foreground">Vet-confirmed cases: <span className="font-semibold text-green-700">{cluster.vet_confirmed_count}</span></p>
+                )}
+                {cluster.weighted_score !== undefined && (
+                  <p className="text-xs text-muted-foreground">Evidence score: <span className="font-semibold text-foreground">{cluster.weighted_score}</span></p>
+                )}
               </div>
             </Popup>
           </Circle>
