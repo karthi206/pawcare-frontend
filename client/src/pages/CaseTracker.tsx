@@ -17,6 +17,7 @@ import CaseMap from "@/components/CaseMap";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
+import { API_URL as FLASK_API_URL } from "@/lib/config";
 
 const DISEASE_OPTIONS = ["Dermatitis", "Fungal_infections", "Healthy", "Hypersensitivity", "demodicosis", "ringworm"];
 

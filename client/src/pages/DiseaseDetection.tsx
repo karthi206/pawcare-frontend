@@ -296,14 +296,40 @@ export default function DiseaseDetection() {
     }
   };
 
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const validateFile = (file: File): string | null => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return "Unsupported file format. Please upload a JPG, PNG, or WebP image.";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return "File is too large (maximum 10 MB). Please choose a smaller photo.";
+    }
+    return null;
+  };
+
+  const handleFileSelect = (file: File) => {
+    const error = validateFile(file);
+    if (error) {
+      toast({
+        title: "Invalid file",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setImage(reader.result as string);
-      reader.readAsDataURL(file);
+    if (file) {
+      handleFileSelect(file);
     }
   };
 
@@ -390,15 +416,12 @@ export default function DiseaseDetection() {
                   </div>
                   <input 
                     type="file" 
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp"
                     className="absolute inset-0 opacity-0 cursor-pointer"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setImageFile(file);
-                        const reader = new FileReader();
-                        reader.onload = () => setImage(reader.result as string);
-                        reader.readAsDataURL(file);
+                        handleFileSelect(file);
                       }
                     }}
                   />
