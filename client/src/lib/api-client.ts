@@ -35,16 +35,37 @@ export function getCsrfToken(): string | null {
   return cachedCsrfToken;
 }
 
+export interface ApiFetchOptions extends RequestInit {
+  timeoutMs?: number;
+  retries?: number;
+}
+
+/**
+ * Safely parse JSON from a Response without throwing SyntaxError on HTML error responses.
+ */
+export async function safeParseJson<T = any>(res: Response): Promise<T | null> {
+  try {
+    const text = await res.text();
+    if (!text || !text.trim()) return null;
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Wrapper around fetch() for calls to the PawCare backend.
  *
  * - Always sends credentials, so the httpOnly auth cookie is included.
  * - For state-changing requests (POST/PUT/PATCH/DELETE), attaches the
  *   X-CSRF-TOKEN header and injects csrf_token into FormData if applicable.
+ * - Includes configurable timeout (default 25s) with AbortController.
+ * - Supports automatic transient retry on network drops and 502/503/504 errors for GET.
  */
-export function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const method = (options.method || "GET").toUpperCase();
-  const headers = new Headers(options.headers);
+export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
+  const { timeoutMs = 25000, retries = 1, ...fetchOptions } = options;
+  const method = (fetchOptions.method || "GET").toUpperCase();
+  const headers = new Headers(fetchOptions.headers);
 
   if (MUTATING_METHODS.has(method)) {
     const csrfToken = getCsrfToken();
@@ -52,15 +73,51 @@ export function apiFetch(path: string, options: RequestInit = {}): Promise<Respo
       headers.set("X-CSRF-TOKEN", csrfToken);
 
       // Also append to FormData for multipart/form-data upload requests
-      if (options.body instanceof FormData && !options.body.has("csrf_token")) {
-        options.body.append("csrf_token", csrfToken);
+      if (fetchOptions.body instanceof FormData && !fetchOptions.body.has("csrf_token")) {
+        fetchOptions.body.append("csrf_token", csrfToken);
       }
     }
   }
 
-  return fetch(`${FLASK_API_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  const url = path.startsWith("http") ? path : `${FLASK_API_URL}${path}`;
+  let lastError: unknown = null;
+  const maxAttempts = method === "GET" ? Math.max(1, retries + 1) : 1;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+        credentials: "include",
+        signal: fetchOptions.signal || controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // If server returned a transient gateway error and we have retries left
+      if (attempt < maxAttempts && (response.status === 502 || response.status === 503 || response.status === 504)) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+        continue;
+      }
+
+      return response;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      lastError = err;
+
+      if (err?.name === "AbortError") {
+        lastError = new Error(`Request to ${path} timed out after ${timeoutMs / 1000}s`);
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error(`Network request failed for ${path}`);
 }

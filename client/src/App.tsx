@@ -22,21 +22,15 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Landing} />
-        <Route path="/disease-detection">
-          <RequireAuth><DiseaseDetection /></RequireAuth>
-        </Route>
-        <Route path="/ngo-locator">
-          <RequireAuth><NgoLocator /></RequireAuth>
-        </Route>
-        <Route path="/cases">
-          <RequireAuth><CaseTracker /></RequireAuth>
-        </Route>
-        <Route path="/adoption">
-          <RequireAuth><AdoptionPortal /></RequireAuth>
-        </Route>
+        <Route path="/disease-detection" component={DiseaseDetection} />
+        <Route path="/ngo-locator" component={NgoLocator} />
+        <Route path="/cases" component={CaseTracker} />
+        <Route path="/adoption" component={AdoptionPortal} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
-        <Route path="/admin" component={AdminPanel} />
+        <Route path="/admin">
+          <RequireAuth><AdminPanel /></RequireAuth>
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

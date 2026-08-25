@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-import { apiFetch, setCsrfToken } from "@/lib/api-client";
+import { apiFetch, setCsrfToken, safeParseJson } from "@/lib/api-client";
 
 interface User {
   id: number;
@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiFetch("/auth/me");
       if (response.ok) {
-        const userData = await response.json();
-        if (userData.csrf_token) {
+        const userData = await safeParseJson(response);
+        if (userData?.csrf_token) {
           setCsrfToken(userData.csrf_token);
         }
         setUser(userData);
@@ -73,19 +73,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
-        return { success: false, error: data.error || "Login failed" };
+        return { success: false, error: data?.error || data?.message || "Login failed" };
       }
 
-      if (data.csrf_token) {
+      if (data?.csrf_token) {
         setCsrfToken(data.csrf_token);
       }
-      setUser(data.user);
+      setUser(data?.user || null);
       return { success: true };
-    } catch (err) {
-      return { success: false, error: "Could not reach the server" };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Could not reach the server" };
     }
   };
 
@@ -96,15 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registerData),
       });
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
-        return { success: false, error: data.error || "Registration failed" };
+        return { success: false, error: data?.error || data?.message || "Registration failed" };
       }
 
-      return { success: true, message: data.message };
-    } catch (err) {
-      return { success: false, error: "Could not reach the server" };
+      return { success: true, message: data?.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Could not reach the server" };
     }
   };
 

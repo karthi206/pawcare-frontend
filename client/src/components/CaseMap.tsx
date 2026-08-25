@@ -32,6 +32,9 @@ interface Cluster {
   center_lon: number;
   weighted_score?: number;
   vet_confirmed_count?: number;
+  cluster_type?: "confirmed_outbreak" | "possible_cluster";
+  title?: string;
+  confidence_level?: "high" | "moderate" | "low";
 }
 
 interface CaseMapProps {
@@ -39,11 +42,10 @@ interface CaseMapProps {
   clusters: Cluster[];
 }
 
-// Contagious/serious conditions get a stronger warning color than milder ones
-const SEVERE_DISEASES = ["ringworm", "Fungal_infections", "demodicosis"];
-
-function getClusterColor(disease: string): string {
-  return SEVERE_DISEASES.includes(disease) ? "#dc2626" : "#f59e0b"; // red vs amber
+// Confirmed outbreaks get red, while unconfirmed possible clusters get amber
+function getClusterColor(cluster: Cluster): string {
+  const isConfirmed = cluster.cluster_type === "confirmed_outbreak" || (cluster.vet_confirmed_count ?? 0) > 0;
+  return isConfirmed ? "#dc2626" : "#f59e0b"; // Red vs Amber
 }
 
 // Parses "12.9716, 77.5946" into { lat, lon } - returns null if invalid/missing
@@ -80,31 +82,46 @@ export default function CaseMap({ cases, clusters }: CaseMapProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {clusters.map((cluster, idx) => (
-          <Circle
-            key={idx}
-            center={[cluster.center_lat, cluster.center_lon]}
-            radius={CLUSTER_RADIUS_KM * 1000} // Leaflet expects meters, our radius is in km
-            pathOptions={{
-              color: getClusterColor(cluster.disease),
-              fillColor: getClusterColor(cluster.disease),
-              fillOpacity: 0.15,
-            }}
-          >
-            <Popup>
-              <div className="text-sm space-y-1">
-                <p className="font-bold text-red-600">⚠ Potential {cluster.disease} Outbreak</p>
-                <p className="text-xs text-muted-foreground">Cases in cluster: <span className="font-semibold text-foreground">{cluster.case_count}</span></p>
-                {cluster.vet_confirmed_count !== undefined && (
-                  <p className="text-xs text-muted-foreground">Vet-confirmed cases: <span className="font-semibold text-green-700">{cluster.vet_confirmed_count}</span></p>
-                )}
-                {cluster.weighted_score !== undefined && (
-                  <p className="text-xs text-muted-foreground">Evidence score: <span className="font-semibold text-foreground">{cluster.weighted_score}</span></p>
-                )}
-              </div>
-            </Popup>
-          </Circle>
-        ))}
+        {clusters.map((cluster, idx) => {
+          const isConfirmed = cluster.cluster_type === "confirmed_outbreak" || (cluster.vet_confirmed_count ?? 0) > 0;
+          return (
+            <Circle
+              key={idx}
+              center={[cluster.center_lat, cluster.center_lon]}
+              radius={CLUSTER_RADIUS_KM * 1000} // Leaflet expects meters, our radius is in km
+              pathOptions={{
+                color: getClusterColor(cluster),
+                fillColor: getClusterColor(cluster),
+                fillOpacity: isConfirmed ? 0.25 : 0.15,
+                dashArray: isConfirmed ? undefined : "6, 6",
+              }}
+            >
+              <Popup>
+                <div className="text-sm space-y-1.5 min-w-[200px]">
+                  {isConfirmed ? (
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="font-bold text-red-600">🚨 Confirmed Outbreak</p>
+                      <span className="text-[10px] bg-red-100 text-red-700 font-semibold px-1.5 py-0.5 rounded">Vet Verified</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="font-bold text-amber-600">⚠️ Possible Cluster</p>
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded">AI Prediction</span>
+                    </div>
+                  )}
+                  <p className="font-semibold text-foreground text-xs">{cluster.disease}</p>
+                  <p className="text-xs text-muted-foreground">Cases in cluster: <span className="font-semibold text-foreground">{cluster.case_count}</span></p>
+                  {cluster.vet_confirmed_count !== undefined && (
+                    <p className="text-xs text-muted-foreground">Vet-confirmed: <span className="font-semibold text-green-700">{cluster.vet_confirmed_count}</span></p>
+                  )}
+                  {cluster.weighted_score !== undefined && (
+                    <p className="text-xs text-muted-foreground">Evidence score: <span className="font-semibold text-foreground">{cluster.weighted_score}</span></p>
+                  )}
+                </div>
+              </Popup>
+            </Circle>
+          );
+        })}
         {casesWithLocation.map((c) => (
           <Marker key={c.id} position={[c.coords!.lat, c.coords!.lon]}>
             <Popup>

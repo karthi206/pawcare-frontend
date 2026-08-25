@@ -460,7 +460,8 @@ export default function DiseaseDetection() {
                   <p className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3 text-left">Sample Placeholder</p>
                   <img 
                     src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80" 
-                    alt="Sample Dog" 
+                    alt="" 
+                    aria-hidden="true"
                     className="w-full h-40 object-cover rounded-xl grayscale opacity-50 border"
                   />
                 </div>
@@ -495,11 +496,31 @@ export default function DiseaseDetection() {
                       </div>
                     </div>
 
+                    {result.severity === "Critical" && (
+                      <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl text-red-900 space-y-2" role="alert">
+                        <div className="flex items-center gap-2 font-bold text-red-700">
+                          <AlertCircle className="w-5 h-5 text-red-600" />
+                          <span>Emergency Escalation Recommended</span>
+                        </div>
+                        <p className="text-sm leading-relaxed">
+                          This condition is potentially contagious or high-severity. Immediate isolation and rescue notification is advised to prevent spread or deterioration.
+                        </p>
+                        <div className="pt-1 flex flex-wrap gap-2">
+                          <Button size="sm" variant="destructive" onClick={() => navigate("/ngo-locator")} className="font-semibold">
+                            Alert Nearby NGO
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => navigate("/cases")} className="border-red-300 text-red-800 hover:bg-red-100">
+                            Log Emergency Rescue Case
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     {result.isAmbiguous && result.secondDisease && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
                         <strong>Note:</strong> The AI wasn't fully confident between two conditions.
                         It could also be <strong>{result.secondDisease}</strong> ({result.secondConfidence}% likelihood).
-                        A vet examination is recommended to distinguish between these.
+                        A clinical vet examination is required to confirm the diagnosis.
                       </div>
                     )}
 
@@ -524,11 +545,12 @@ export default function DiseaseDetection() {
                   </CardContent>
                 </Card>
 
-                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex gap-3">
-                  <AlertCircle className="w-6 h-6 text-destructive shrink-0" />
-                  <p className="text-sm text-destructive-foreground font-medium">
-                    Disclaimer: This tool provides preliminary AI-based insights and is not a substitute for professional veterinary diagnosis.
-                  </p>
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex gap-3" role="note">
+                  <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground block mb-0.5">Clinical Disclaimer</strong>
+                    PawCare AI is an automated image screening tool intended solely for community triage assistance. It is NOT a clinical diagnosis and cannot replace in-person physical evaluation by a licensed veterinarian.
+                  </div>
                 </div>
               </motion.div>
             )}

@@ -42,7 +42,9 @@ export default function Landing() {
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1920&q=80" 
-            alt="Happy dog" 
+            alt="" 
+            aria-hidden="true"
+            role="presentation"
             className="w-full h-full object-cover object-[75%_35%]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--primary))]/95 via-[hsl(var(--primary))]/80 to-transparent"></div>

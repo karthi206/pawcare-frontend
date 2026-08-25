@@ -55,6 +55,9 @@ interface Cluster {
   center_lon: number;
   weighted_score?: number;
   vet_confirmed_count?: number;
+  cluster_type?: "confirmed_outbreak" | "possible_cluster";
+  title?: string;
+  confidence_level?: "high" | "moderate" | "low";
 }
 
 export default function CaseTracker() {
@@ -183,18 +186,37 @@ export default function CaseTracker() {
 
       {clusters.length > 0 && (
         <div className="space-y-2">
-          {clusters.map((cluster, idx) => (
-            <div
-              key={idx}
-              className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
-            >
-              <span className="text-xl">⚠️</span>
-              <p className="text-sm text-red-800 font-medium">
-                Possible <strong>{cluster.disease}</strong> outbreak — {cluster.case_count} cases
-                reported in a concentrated area ({cluster.center_lat.toFixed(3)}, {cluster.center_lon.toFixed(3)})
-              </p>
-            </div>
-          ))}
+          {clusters.map((cluster, idx) => {
+            const isConfirmed = cluster.cluster_type === "confirmed_outbreak" || (cluster.vet_confirmed_count ?? 0) > 0;
+            return (
+              <div
+                key={idx}
+                className={`p-4 rounded-xl flex items-center justify-between gap-3 border ${
+                  isConfirmed ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{isConfirmed ? "🚨" : "⚠️"}</span>
+                  <p className={`text-sm font-medium ${isConfirmed ? "text-red-800" : "text-amber-900"}`}>
+                    {isConfirmed ? (
+                      <>
+                        <strong>Confirmed {cluster.disease} Outbreak</strong> — {cluster.case_count} cases ({cluster.vet_confirmed_count} vet-confirmed) reported near ({cluster.center_lat.toFixed(3)}, {cluster.center_lon.toFixed(3)})
+                      </>
+                    ) : (
+                      <>
+                        <strong>Possible {cluster.disease} Cluster (Unverified)</strong> — {cluster.case_count} AI predictions near ({cluster.center_lat.toFixed(3)}, {cluster.center_lon.toFixed(3)})
+                      </>
+                    )}
+                  </p>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                  isConfirmed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"
+                }`}>
+                  {isConfirmed ? "Vet Verified" : "AI Evidence"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 

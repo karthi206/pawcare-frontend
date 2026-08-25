@@ -45,21 +45,27 @@ export default function Login() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
+                name="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                aria-required="true"
                 autoComplete="username"
+                placeholder="Enter your username"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                aria-required="true"
                 autoComplete="current-password"
+                placeholder="Enter your password"
               />
             </div>
 

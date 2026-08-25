@@ -85,7 +85,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Mobile Menu Trigger */}
           <button 
-            className="lg:hidden p-2 text-primary" 
+            className="lg:hidden p-2 text-primary focus:outline-none focus:ring-2 focus:ring-primary rounded-lg" 
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
