@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,10 @@ export default function DiseaseDetection() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedUploads, setQueuedUploads] = useState<QueuedUpload[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Synchronous execution locks to prevent double-click / concurrent race conditions
+  const isAnalyzingRef = useRef(false);
+  const isSyncingRef = useRef(false);
   const [result, setResult] = useState<{
     disease: string;
     confidence: number;
@@ -141,57 +145,64 @@ export default function DiseaseDetection() {
 
   // Attempts to upload all queued items - called automatically when connection returns
   const syncQueuedUploads = async () => {
-    const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
-    const queue: QueuedUpload[] = stored ? JSON.parse(stored) : [];
-    if (queue.length === 0) return;
-
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     setIsSyncing(true);
-    const stillQueued: QueuedUpload[] = [];
-    let successCount = 0;
 
-    for (const item of queue) {
-      try {
-        const file = base64ToFile(item.imageDataUrl, item.filename);
-        const formData = new FormData();
-        formData.append("image", file);
-        formData.append("location", item.location);
+    try {
+      const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
+      const queue: QueuedUpload[] = stored ? JSON.parse(stored) : [];
+      if (queue.length === 0) return;
 
-        // /upload supports both guest and authenticated uploads.
-        // apiFetch sends the httpOnly auth cookie + CSRF header automatically if logged in.
-        const response = await apiFetch("/upload", {
-          method: "POST",
-          body: formData,
-        });
+      const stillQueued: QueuedUpload[] = [];
+      let successCount = 0;
 
-        if (response.status === 422) {
-          // Permanent rejection (e.g. not recognized as a dog) — retrying won't ever help,
-          // so don't re-queue it. Tell the person clearly instead of silently failing forever.
-          const data = await response.json().catch(() => null);
-          toast({
-            title: "One queued upload couldn't be processed",
-            description: data?.message || "This photo wasn't recognized as a dog and won't be retried.",
-            variant: "destructive",
+      for (const item of queue) {
+        try {
+          const file = base64ToFile(item.imageDataUrl, item.filename);
+          const formData = new FormData();
+          formData.append("image", file);
+          formData.append("location", item.location);
+
+          // /upload supports both guest and authenticated uploads.
+          // apiFetch sends the httpOnly auth cookie + CSRF header automatically if logged in.
+          const response = await apiFetch("/upload", {
+            method: "POST",
+            body: formData,
           });
-          continue; // don't push to stillQueued — drop it, and don't count it as a success
+
+          if (response.status === 422) {
+            // Permanent rejection (e.g. not recognized as a dog) — retrying won't ever help,
+            // so don't re-queue it. Tell the person clearly instead of silently failing forever.
+            const data = await response.json().catch(() => null);
+            toast({
+              title: "One queued upload couldn't be processed",
+              description: data?.message || "This photo wasn't recognized as a dog and won't be retried.",
+              variant: "destructive",
+            });
+            continue; // don't push to stillQueued — drop it, and don't count it as a success
+          }
+
+          if (!response.ok) throw new Error("Sync failed for this item");
+          successCount++; // Successfully synced - don't add it back to stillQueued
+        } catch (err) {
+          console.error("Failed to sync queued upload:", err);
+          stillQueued.push(item); // genuine network/server failure - keep it queued, try again next time
         }
-
-        if (!response.ok) throw new Error("Sync failed for this item");
-        successCount++; // Successfully synced - don't add it back to stillQueued
-      } catch (err) {
-        console.error("Failed to sync queued upload:", err);
-        stillQueued.push(item); // genuine network/server failure - keep it queued, try again next time
       }
-    }
 
-    localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(stillQueued));
-    setQueuedUploads(stillQueued);
-    setIsSyncing(false);
+      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(stillQueued));
+      setQueuedUploads(stillQueued);
 
-    if (successCount > 0) {
-      toast({
-        title: "Synced offline uploads",
-        description: `${successCount} case(s) uploaded successfully.`,
-      });
+      if (successCount > 0) {
+        toast({
+          title: "Synced offline uploads",
+          description: `${successCount} case(s) uploaded successfully.`,
+        });
+      }
+    } finally {
+      isSyncingRef.current = false;
+      setIsSyncing(false);
     }
   };
 
@@ -202,42 +213,44 @@ export default function DiseaseDetection() {
     }
   }, [isOnline]);
 
-  const handleUpload = async () => {
-    if (!imageFile) return;
+  const handleUpload = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!imageFile || isAnalyzingRef.current) return;
 
-    // If offline, save to the local queue instead of attempting a network request
-    if (!isOnline) {
-      const dataUrl = await fileToBase64(imageFile);
-      const newItem: QueuedUpload = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        imageDataUrl: dataUrl,
-        filename: imageFile.name,
-        location,
-        queuedAt: new Date().toISOString(),
-      };
-
-      const updatedQueue = [...queuedUploads, newItem];
-      setQueuedUploads(updatedQueue);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(updatedQueue));
-
-      toast({
-        title: "Saved offline",
-        description: "This case will upload automatically once you're back online.",
-      });
-
-      setImage(null);
-      setImageFile(null);
-      return;
-    }
-
+    isAnalyzingRef.current = true;
     setIsAnalyzing(true);
 
-    // Build the multipart form data
-    const formData = new FormData();
-    formData.append("image", imageFile);
-    formData.append("location", location);
-
     try {
+      // If offline, save to the local queue instead of attempting a network request
+      if (!isOnline) {
+        const dataUrl = await fileToBase64(imageFile);
+        const newItem: QueuedUpload = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          imageDataUrl: dataUrl,
+          filename: imageFile.name,
+          location,
+          queuedAt: new Date().toISOString(),
+        };
+
+        const updatedQueue = [...queuedUploads, newItem];
+        setQueuedUploads(updatedQueue);
+        localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(updatedQueue));
+
+        toast({
+          title: "Saved offline",
+          description: "This case will upload automatically once you're back online.",
+        });
+
+        setImage(null);
+        setImageFile(null);
+        return;
+      }
+
+      // Build the multipart form data
+      const formData = new FormData();
+      formData.append("image", imageFile);
+      formData.append("location", location);
+
       // /upload is publicly accessible for predictions. If logged in, the case is saved to the user account.
       const response = await apiFetch("/upload", {
         method: "POST",
@@ -252,7 +265,6 @@ export default function DiseaseDetection() {
           description: errorData.message || "Please upload a clear photo of a dog.",
           variant: "destructive",
         });
-        setIsAnalyzing(false);
         return;
       }
 
@@ -292,6 +304,7 @@ export default function DiseaseDetection() {
         variant: "destructive",
       });
     } finally {
+      isAnalyzingRef.current = false;
       setIsAnalyzing(false);
     }
   };
@@ -376,6 +389,7 @@ export default function DiseaseDetection() {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           className="h-11 rounded-xl"
+          disabled={isAnalyzing}
         />
         <p className="text-xs text-muted-foreground mt-1.5">
           {locationStatus === "detected" && "GPS location detected automatically — edit if needed."}
@@ -400,7 +414,16 @@ export default function DiseaseDetection() {
                     className="absolute inset-0 w-full h-full object-cover rounded-lg"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                    <Button variant="secondary" onClick={() => { setImage(null); setImageFile(null); }}>
+                    <Button 
+                      variant="secondary" 
+                      disabled={isAnalyzing}
+                      onClick={() => { 
+                        if (!isAnalyzing) {
+                          setImage(null); 
+                          setImageFile(null); 
+                        }
+                      }}
+                    >
                       Change Image
                     </Button>
                   </div>
@@ -418,6 +441,7 @@ export default function DiseaseDetection() {
                     type="file" 
                     accept="image/png,image/jpeg,image/webp"
                     className="absolute inset-0 opacity-0 cursor-pointer"
+                    disabled={isAnalyzing}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -431,11 +455,19 @@ export default function DiseaseDetection() {
           </CardContent>
           <div className="p-4 bg-muted/30 border-t">
             <Button 
+              type="button"
               className="w-full h-12 text-base font-semibold" 
-              disabled={!image || isAnalyzing}
+              disabled={!image || !imageFile || isAnalyzing}
               onClick={handleUpload}
             >
-              {isAnalyzing ? "Analyzing with AI..." : "Analyze Image"}
+              {isAnalyzing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Analyzing with AI...
+                </>
+              ) : (
+                "Analyze Image"
+              )}
             </Button>
           </div>
         </Card>
