@@ -21,11 +21,21 @@ function Router() {
   return (
     <AppLayout>
       <Switch>
+        {/* Guest-accessible pages */}
         <Route path="/" component={Landing} />
         <Route path="/disease-detection" component={DiseaseDetection} />
-        <Route path="/ngo-locator" component={NgoLocator} />
-        <Route path="/cases" component={CaseTracker} />
-        <Route path="/adoption" component={AdoptionPortal} />
+
+        {/* Login/signup users only */}
+        <Route path="/ngo-locator">
+          <RequireAuth><NgoLocator /></RequireAuth>
+        </Route>
+        <Route path="/cases">
+          <RequireAuth><CaseTracker /></RequireAuth>
+        </Route>
+        <Route path="/adoption">
+          <RequireAuth><AdoptionPortal /></RequireAuth>
+        </Route>
+
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/admin">
