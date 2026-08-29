@@ -421,6 +421,7 @@ export default function DiseaseDetection() {
                         if (!isAnalyzing) {
                           setImage(null); 
                           setImageFile(null); 
+                          setResult(null);
                         }
                       }}
                     >
