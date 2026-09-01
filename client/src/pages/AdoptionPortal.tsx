@@ -144,7 +144,7 @@ export default function AdoptionPortal() {
       )}
 
       <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+        <DialogContent className="!max-w-3xl !w-[90vw] p-0 overflow-hidden">
           {selectedPet && (
             <div className="grid grid-cols-1 md:grid-cols-2">
               <img
