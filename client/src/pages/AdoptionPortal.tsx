@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Heart, CheckCircle2, PawPrint, Loader2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ export default function AdoptionPortal() {
   const [error, setError] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<Set<number>>(new Set());
   const [requestingId, setRequestingId] = useState<number | null>(null);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
   useEffect(() => {
     apiFetch("/pets")
@@ -108,7 +110,10 @@ export default function AdoptionPortal() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
             >
-              <Card className="overflow-hidden border-border/50 hover-elevate group">
+              <Card
+                className="overflow-hidden border-border/50 hover-elevate group cursor-pointer"
+                onClick={() => setSelectedPet(pet)}
+              >
                 <div className="aspect-[4/5] relative">
                   <img
                     src={pet.image_filename || PLACEHOLDER_IMAGE}
@@ -124,7 +129,7 @@ export default function AdoptionPortal() {
                     </div>
                   )}
                 </div>
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-2xl font-bold">{pet.name}</CardTitle>
                     <div className="p-2 bg-primary/5 rounded-full text-primary">
@@ -132,37 +137,52 @@ export default function AdoptionPortal() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
-                    {pet.breed && <span className="bg-muted px-2 py-1 rounded">{pet.breed}</span>}
-                    {pet.age && <span className="bg-muted px-2 py-1 rounded">{pet.age}</span>}
-                  </div>
-                  {pet.description && (
-                    <p className="text-sm text-muted-foreground">{pet.description}</p>
-                  )}
-                  <Button
-                    className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-bold h-11 rounded-xl shadow-lg shadow-green-600/20 disabled:opacity-70"
-                    onClick={() => handleAdopt(pet)}
-                    disabled={requestedIds.has(pet.id) || requestingId === pet.id}
-                  >
-                    {requestedIds.has(pet.id) ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        Request Sent
-                      </>
-                    ) : (
-                      <>
-                        <Heart className="w-4 h-4 fill-current" />
-                        {requestingId === pet.id ? "Sending..." : "Adopt Me"}
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
               </Card>
             </motion.div>
           ))}
         </div>
       )}
+
+      <Dialog open={!!selectedPet} onOpenChange={(open: boolean) => !open && setSelectedPet(null)}>
+        <DialogContent className="max-w-md">
+          {selectedPet && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold">{selectedPet.name}</DialogTitle>
+              </DialogHeader>
+              <img
+                src={selectedPet.image_filename || PLACEHOLDER_IMAGE}
+                alt={selectedPet.name}
+                className="w-full aspect-[4/5] object-cover rounded-lg"
+              />
+              <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
+                {selectedPet.breed && <span className="bg-muted px-2 py-1 rounded">{selectedPet.breed}</span>}
+                {selectedPet.age && <span className="bg-muted px-2 py-1 rounded">{selectedPet.age}</span>}
+              </div>
+              {selectedPet.description && (
+                <p className="text-sm text-muted-foreground">{selectedPet.description}</p>
+              )}
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-bold h-11 rounded-xl shadow-lg shadow-green-600/20 disabled:opacity-70"
+                onClick={() => handleAdopt(selectedPet)}
+                disabled={requestedIds.has(selectedPet.id) || requestingId === selectedPet.id}
+              >
+                {requestedIds.has(selectedPet.id) ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Request Sent
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-4 h-4 fill-current" />
+                    {requestingId === selectedPet.id ? "Sending..." : "Adopt Me"}
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
