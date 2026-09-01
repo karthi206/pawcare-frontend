@@ -143,43 +143,45 @@ export default function AdoptionPortal() {
         </div>
       )}
 
-      <Dialog open={!!selectedPet} onOpenChange={(open: boolean) => !open && setSelectedPet(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
           {selectedPet && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold">{selectedPet.name}</DialogTitle>
-              </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2">
               <img
                 src={selectedPet.image_filename || PLACEHOLDER_IMAGE}
                 alt={selectedPet.name}
-                className="w-full aspect-[4/5] object-cover rounded-lg"
+                className="w-full h-full max-h-[75vh] object-cover"
               />
-              <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
-                {selectedPet.breed && <span className="bg-muted px-2 py-1 rounded">{selectedPet.breed}</span>}
-                {selectedPet.age && <span className="bg-muted px-2 py-1 rounded">{selectedPet.age}</span>}
-              </div>
-              {selectedPet.description && (
-                <p className="text-sm text-muted-foreground">{selectedPet.description}</p>
-              )}
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-bold h-11 rounded-xl shadow-lg shadow-green-600/20 disabled:opacity-70"
-                onClick={() => handleAdopt(selectedPet)}
-                disabled={requestedIds.has(selectedPet.id) || requestingId === selectedPet.id}
-              >
-                {requestedIds.has(selectedPet.id) ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Request Sent
-                  </>
-                ) : (
-                  <>
-                    <Heart className="w-4 h-4 fill-current" />
-                    {requestingId === selectedPet.id ? "Sending..." : "Adopt Me"}
-                  </>
+              <div className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[75vh]">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold">{selectedPet.name}</DialogTitle>
+                </DialogHeader>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
+                  {selectedPet.breed && <span className="bg-muted px-2 py-1 rounded">{selectedPet.breed}</span>}
+                  {selectedPet.age && <span className="bg-muted px-2 py-1 rounded">{selectedPet.age}</span>}
+                </div>
+                {selectedPet.description && (
+                  <p className="text-sm text-muted-foreground">{selectedPet.description}</p>
                 )}
-              </Button>
-            </>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-bold h-11 rounded-xl shadow-lg shadow-green-600/20 disabled:opacity-70 mt-auto"
+                  onClick={() => handleAdopt(selectedPet)}
+                  disabled={requestedIds.has(selectedPet.id) || requestingId === selectedPet.id}
+                >
+                  {requestedIds.has(selectedPet.id) ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      Request Sent
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="w-4 h-4 fill-current" />
+                      {requestingId === selectedPet.id ? "Sending..." : "Adopt Me"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
