@@ -260,11 +260,10 @@ Case saved to Neon database with Cloudinary photo URL
 Vet verification → vet confirms/corrects the AI prediction
 Human-in-the-loop → vet corrections exported as training data
 Model improves → retrain on vet-corrected cases in Colab
-📝 License
-MIT License — see LICENSE file
+
 
 👤 Author
-Karthi — 3rd year CS student
+Karthi — 3rd year IT student
 Built: August 2026
 
 🙏 Acknowledgments
