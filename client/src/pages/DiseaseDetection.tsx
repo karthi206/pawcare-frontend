@@ -62,6 +62,10 @@ export default function DiseaseDetection() {
   const [queuedUploads, setQueuedUploads] = useState<QueuedUpload[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Raw GPS coords kept separately (not shown, not submitted) in case they're
+  // needed later for clustering/distance calcs once location becomes an address string.
+  const rawCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+
   // Synchronous execution locks to prevent double-click / concurrent race conditions
   const isAnalyzingRef = useRef(false);
   const isSyncingRef = useRef(false);
@@ -85,9 +89,26 @@ export default function DiseaseDetection() {
 
     setLocationStatus("detecting");
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        rawCoordsRef.current = { lat: latitude, lng: longitude };
+
+        // Reverse-geocode the coords into a human-readable address via our
+        // backend proxy (which calls Nominatim server-side).
+        try {
+          const res = await apiFetch(`/geocode/reverse?lat=${latitude}&lng=${longitude}`);
+          const data = await res.json();
+          if (data?.address) {
+            setLocation(data.address);
+          } else {
+            // Backend reachable but couldn't resolve an address - fall back to coords
+            setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          }
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
+          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+
         setLocationStatus("detected");
       },
       () => {

@@ -45,7 +45,7 @@ export default function Landing() {
             alt="" 
             aria-hidden="true"
             role="presentation"
-            className="w-full h-full object-cover object-[75%_35%]"
+            className="w-full h-full object-cover object-[center_35%]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--primary))]/95 via-[hsl(var(--primary))]/80 to-transparent"></div>
         </div>
