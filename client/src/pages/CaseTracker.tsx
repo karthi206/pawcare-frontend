@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, safeParseJson } from "@/lib/api-client";
 import { API_URL as FLASK_API_URL } from "@/lib/config";
+import { reverseGeocode, isCoordinateString } from "@/lib/geocoding";
 
 const DISEASE_OPTIONS = ["Dermatitis", "Fungal_infections", "Healthy", "Hypersensitivity", "demodicosis", "ringworm"];
 
@@ -31,6 +32,8 @@ interface Case {
   is_uncertain: boolean;
   status: string;
   location: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
   vet_confirmed_label: string | null;
 }
@@ -54,11 +57,62 @@ interface Cluster {
   case_ids: number[];
   center_lat: number;
   center_lon: number;
+  location_name?: string | null;
   weighted_score?: number;
   vet_confirmed_count?: number;
   cluster_type?: "confirmed_outbreak" | "possible_cluster";
   title?: string;
   confidence_level?: "high" | "moderate" | "low";
+}
+
+function LocationCell({ location, lat, lng }: { location: string | null; lat?: number | null; lng?: number | null }) {
+  const [resolved, setResolved] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location && !isCoordinateString(location)) {
+      return;
+    }
+
+    let targetLat: number | null = lat ?? null;
+    let targetLng: number | null = lng ?? null;
+
+    if (location && isCoordinateString(location)) {
+      const parts = location.split(",");
+      targetLat = parseFloat(parts[0]);
+      targetLng = parseFloat(parts[1]);
+    }
+
+    if (targetLat !== null && targetLng !== null && !isNaN(targetLat) && !isNaN(targetLng)) {
+      reverseGeocode(targetLat, targetLng).then((addr) => {
+        if (addr) setResolved(addr);
+      });
+    }
+  }, [location, lat, lng]);
+
+  const display = resolved || (location && !isCoordinateString(location) ? location : resolved || location || "—");
+  return (
+    <span title={display} className="truncate max-w-[220px] inline-block align-middle">
+      {display}
+    </span>
+  );
+}
+
+function ClusterLocationText({ cluster }: { cluster: Cluster }) {
+  const [address, setAddress] = useState<string | null>(cluster.location_name || null);
+
+  useEffect(() => {
+    if (cluster.location_name) {
+      setAddress(cluster.location_name);
+      return;
+    }
+    if (cluster.center_lat && cluster.center_lon) {
+      reverseGeocode(cluster.center_lat, cluster.center_lon).then((addr) => {
+        if (addr) setAddress(addr);
+      });
+    }
+  }, [cluster]);
+
+  return <span>{address || `${cluster.center_lat.toFixed(3)}, ${cluster.center_lon.toFixed(3)}`}</span>;
 }
 
 export default function CaseTracker() {
@@ -241,11 +295,11 @@ export default function CaseTracker() {
                   <p className={`text-sm font-medium ${isConfirmed ? "text-red-800" : "text-amber-900"}`}>
                     {isConfirmed ? (
                       <>
-                        <strong>Confirmed {cluster.disease} Outbreak</strong> — {cluster.case_count} cases ({cluster.vet_confirmed_count} vet-confirmed) reported near ({cluster.center_lat.toFixed(3)}, {cluster.center_lon.toFixed(3)})
+                        <strong>Confirmed {cluster.disease} Outbreak</strong> — {cluster.case_count} cases ({cluster.vet_confirmed_count} vet-confirmed) reported near <ClusterLocationText cluster={cluster} />
                       </>
                     ) : (
                       <>
-                        <strong>Possible {cluster.disease} Cluster (Unverified)</strong> — {cluster.case_count} AI predictions near ({cluster.center_lat.toFixed(3)}, {cluster.center_lon.toFixed(3)})
+                        <strong>Possible {cluster.disease} Cluster (Unverified)</strong> — {cluster.case_count} AI predictions near <ClusterLocationText cluster={cluster} />
                       </>
                     )}
                   </p>
@@ -325,7 +379,7 @@ export default function CaseTracker() {
                     </TableCell>
                     <TableCell>{Math.round(c.confidence * 100)}%</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {c.location || "—"}
+                      <LocationCell location={c.location} lat={c.latitude} lng={c.longitude} />
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`font-semibold px-3 py-1 ${getStatusColor(c.status)}`}>

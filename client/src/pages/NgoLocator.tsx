@@ -30,6 +30,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+import { reverseGeocode } from "@/lib/geocoding";
 
 // Same Leaflet icon fix used in CaseMap.tsx - required once per file that renders markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -182,6 +183,11 @@ export default function NgoLocator() {
     setNgoLat(lat.toFixed(6));
     setNgoLng(lng.toFixed(6));
     setFormError(null);
+    reverseGeocode(lat, lng).then((addr) => {
+      if (addr) {
+        setNgoAddress(addr);
+      }
+    });
   };
 
   const handleCreateNgo = async (e: React.FormEvent) => {
@@ -523,7 +529,7 @@ export default function NgoLocator() {
                   <Marker position={[parseFloat(ngoLat), parseFloat(ngoLng)]}>
                     <Popup>
                       <div className="text-xs font-semibold text-emerald-700">
-                        Selected New NGO Location ({parseFloat(ngoLat).toFixed(4)}, {parseFloat(ngoLng).toFixed(4)})
+                        Selected Location: {ngoAddress || `${parseFloat(ngoLat).toFixed(4)}, ${parseFloat(ngoLng).toFixed(4)}`}
                       </div>
                     </Popup>
                   </Marker>

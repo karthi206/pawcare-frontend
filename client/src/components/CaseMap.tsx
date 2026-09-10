@@ -21,6 +21,8 @@ interface Case {
   is_uncertain: boolean;
   status: string;
   location: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 
@@ -30,6 +32,7 @@ interface Cluster {
   case_ids: number[];
   center_lat: number;
   center_lon: number;
+  location_name?: string | null;
   weighted_score?: number;
   vet_confirmed_count?: number;
   cluster_type?: "confirmed_outbreak" | "possible_cluster";
@@ -56,9 +59,16 @@ function parseLocation(location: string | null): { lat: number; lon: number } | 
   return { lat: parts[0], lon: parts[1] };
 }
 
+function getCaseCoords(c: Case): { lat: number; lon: number } | null {
+  if (typeof c.latitude === "number" && typeof c.longitude === "number" && !isNaN(c.latitude) && !isNaN(c.longitude)) {
+    return { lat: c.latitude, lon: c.longitude };
+  }
+  return parseLocation(c.location);
+}
+
 export default function CaseMap({ cases, clusters }: CaseMapProps) {
   const casesWithLocation = cases
-    .map((c) => ({ ...c, coords: parseLocation(c.location) }))
+    .map((c) => ({ ...c, coords: getCaseCoords(c) }))
     .filter((c) => c.coords !== null);
 
   if (casesWithLocation.length === 0) {
@@ -110,6 +120,9 @@ export default function CaseMap({ cases, clusters }: CaseMapProps) {
                     </div>
                   )}
                   <p className="font-semibold text-foreground text-xs">{cluster.disease}</p>
+                  {cluster.location_name && (
+                    <p className="text-xs text-muted-foreground font-medium">📍 {cluster.location_name}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">Cases in cluster: <span className="font-semibold text-foreground">{cluster.case_count}</span></p>
                   {cluster.vet_confirmed_count !== undefined && (
                     <p className="text-xs text-muted-foreground">Vet-confirmed: <span className="font-semibold text-green-700">{cluster.vet_confirmed_count}</span></p>
@@ -130,6 +143,11 @@ export default function CaseMap({ cases, clusters }: CaseMapProps) {
                 <p>{c.prediction} {c.is_uncertain && "(Uncertain)"}</p>
                 <p>Confidence: {Math.round(c.confidence * 100)}%</p>
                 <p>Status: {c.status.replace("_", " ")}</p>
+                {c.location && (
+                  <p className="text-xs text-muted-foreground mt-1 border-t pt-1">
+                    📍 {c.location}
+                  </p>
+                )}
               </div>
             </Popup>
           </Marker>

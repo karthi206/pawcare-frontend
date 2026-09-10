@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, AlertCircle, CheckCircle2, Info, MapPin, WifiOff, RefreshCw, Clock } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle2, Info, MapPin, WifiOff, RefreshCw, Clock, LocateFixed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+import { reverseGeocode } from "@/lib/geocoding";
 
 // Maps a raw model prediction label to display info.
 // The Flask model only returns { prediction, confidence } - it doesn't know
@@ -45,6 +46,8 @@ interface QueuedUpload {
   imageDataUrl: string;
   filename: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   queuedAt: string;
 }
 
@@ -62,8 +65,7 @@ export default function DiseaseDetection() {
   const [queuedUploads, setQueuedUploads] = useState<QueuedUpload[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Raw GPS coords kept separately (not shown, not submitted) in case they're
-  // needed later for clustering/distance calcs once location becomes an address string.
+  // Raw GPS coords kept for clustering and map placement
   const rawCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Synchronous execution locks to prevent double-click / concurrent race conditions
@@ -80,8 +82,8 @@ export default function DiseaseDetection() {
   } | null>(null);
   const { toast } = useToast();
 
-  // Try to auto-detect location once, when the page first loads
-  useEffect(() => {
+  // Function to detect location and convert GPS coordinates to a human-readable wording address
+  const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus("denied");
       return;
@@ -93,30 +95,31 @@ export default function DiseaseDetection() {
         const { latitude, longitude } = position.coords;
         rawCoordsRef.current = { lat: latitude, lng: longitude };
 
-        // Reverse-geocode the coords into a human-readable address via our
-        // backend proxy (which calls Nominatim server-side).
         try {
-          const res = await apiFetch(`/geocode/reverse?lat=${latitude}&lng=${longitude}`);
-          const data = await res.json();
-          if (data?.address) {
-            setLocation(data.address);
+          const wordingAddress = await reverseGeocode(latitude, longitude);
+          if (wordingAddress) {
+            setLocation(wordingAddress);
+            setLocationStatus("detected");
           } else {
-            // Backend reachable but couldn't resolve an address - fall back to coords
-            setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+            // Do not write raw lat/lng numbers into the address box
+            setLocationStatus("denied");
           }
         } catch (err) {
           console.error("Reverse geocoding failed:", err);
-          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setLocationStatus("denied");
         }
-
-        setLocationStatus("detected");
       },
       () => {
-        // User denied permission, or GPS unavailable - fall back to manual entry
         setLocationStatus("denied");
-      }
+      },
+      { timeout: 10000, enableHighAccuracy: true }
     );
   }, []);
+
+  // Try to auto-detect location once when the page first loads
+  useEffect(() => {
+    detectLocation();
+  }, [detectLocation]);
 
   // Load any previously queued (unsynced) uploads from localStorage on page load
   useEffect(() => {
@@ -184,6 +187,10 @@ export default function DiseaseDetection() {
           const formData = new FormData();
           formData.append("image", file);
           formData.append("location", item.location);
+          if (item.latitude !== undefined && item.longitude !== undefined) {
+            formData.append("latitude", String(item.latitude));
+            formData.append("longitude", String(item.longitude));
+          }
 
           // /upload supports both guest and authenticated uploads.
           // apiFetch sends the httpOnly auth cookie + CSRF header automatically if logged in.
@@ -250,6 +257,8 @@ export default function DiseaseDetection() {
           imageDataUrl: dataUrl,
           filename: imageFile.name,
           location,
+          latitude: rawCoordsRef.current?.lat,
+          longitude: rawCoordsRef.current?.lng,
           queuedAt: new Date().toISOString(),
         };
 
@@ -271,6 +280,10 @@ export default function DiseaseDetection() {
       const formData = new FormData();
       formData.append("image", imageFile);
       formData.append("location", location);
+      if (rawCoordsRef.current) {
+        formData.append("latitude", String(rawCoordsRef.current.lat));
+        formData.append("longitude", String(rawCoordsRef.current.lng));
+      }
 
       // /upload is publicly accessible for predictions. If logged in, the case is saved to the user account.
       const response = await apiFetch("/upload", {
@@ -401,21 +414,33 @@ export default function DiseaseDetection() {
       )}
 
       <div className="mb-6 max-w-md mx-auto">
-        <label className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-          <MapPin className="w-4 h-4 text-primary" />
-          Location
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-semibold flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-primary" />
+            Location Address
+          </label>
+          <button
+            type="button"
+            onClick={detectLocation}
+            disabled={locationStatus === "detecting" || isAnalyzing}
+            className="text-xs font-medium text-primary hover:underline flex items-center gap-1 disabled:opacity-50"
+            title="Auto-detect current wording address"
+          >
+            <LocateFixed className={`w-3.5 h-3.5 ${locationStatus === "detecting" ? "animate-spin" : ""}`} />
+            {locationStatus === "detecting" ? "Detecting..." : "Detect Address"}
+          </button>
+        </div>
         <Input
-          placeholder={locationStatus === "detecting" ? "Detecting your location..." : "e.g. Chennai, T Nagar"}
+          placeholder={locationStatus === "detecting" ? "Detecting your street address..." : "e.g. 12 Rajiv Gandhi Street, Alapakkam, Chennai"}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           className="h-11 rounded-xl"
           disabled={isAnalyzing}
         />
         <p className="text-xs text-muted-foreground mt-1.5">
-          {locationStatus === "detected" && "GPS location detected automatically — edit if needed."}
-          {locationStatus === "denied" && "Couldn't access GPS — please enter the location manually."}
-          {locationStatus === "detecting" && "Requesting location access..."}
+          {locationStatus === "detected" && "Street/area address detected automatically — edit or refine if needed."}
+          {locationStatus === "denied" && "Couldn't access GPS — please enter your address manually."}
+          {locationStatus === "detecting" && "Detecting wording address from GPS..."}
         </p>
       </div>
 
