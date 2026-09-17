@@ -52,13 +52,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="hidden lg:flex items-center gap-3">
             {user ? (
               <>
-                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                <Link
+                  href="/profile"
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-[#1F4E79] ${
+                    location === "/profile" ? "text-[#1F4E79] font-bold" : "text-muted-foreground"
+                  }`}
+                  aria-label="User Profile"
+                >
                   {user.role === "vet" ? <Stethoscope className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />}
-                  {user.username}
+                  <span>{user.username}</span>
                   {user.role === "vet" && !user.is_verified && (
-                    <span className="text-xs text-amber-600">(pending)</span>
+                    <span className="text-xs text-amber-600 font-normal">(pending)</span>
                   )}
-                </div>
+                </Link>
                 {user.role === "admin" && (
                   <Link href="/admin" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
                     Admin
@@ -116,13 +122,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="border-t border-border pt-4 mt-2">
               {user ? (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
-                    {user.role === "vet" ? <Stethoscope className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />}
-                    {user.username}
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-2 p-2 text-lg font-bold transition-colors ${
+                      location === "/profile"
+                        ? "text-[#1F4E79] bg-primary/5 rounded-lg"
+                        : "text-muted-foreground hover:text-[#1F4E79]"
+                    }`}
+                    aria-label="User Profile"
+                  >
+                    {user.role === "vet" ? <Stethoscope className="w-5 h-5" /> : <UserIcon className="w-5 h-5" />}
+                    <span>Profile ({user.username})</span>
                     {user.role === "vet" && !user.is_verified && (
-                      <span className="text-xs text-amber-600">(pending)</span>
+                      <span className="text-xs text-amber-600 font-normal">(pending)</span>
                     )}
-                  </div>
+                  </Link>
                   {user.role === "admin" && (
                     <Link
                       href="/admin"

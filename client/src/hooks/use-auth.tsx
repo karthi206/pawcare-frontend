@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 import { apiFetch, setCsrfToken, safeParseJson } from "@/lib/api-client";
 
-interface User {
+export interface User {
   id: number;
   username: string;
   email: string;
@@ -13,12 +13,13 @@ interface User {
   is_verified: boolean;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -122,7 +123,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshUser: fetchCurrentUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

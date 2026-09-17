@@ -15,6 +15,7 @@ import AdoptionPortal from "./pages/AdoptionPortal";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminPanel from "./pages/AdminPanel";
+import Profile from "./pages/Profile";
 import { RequireAuth } from "./components/RequireAuth";
 
 function Router() {
@@ -34,6 +35,9 @@ function Router() {
         </Route>
         <Route path="/adoption">
           <RequireAuth><AdoptionPortal /></RequireAuth>
+        </Route>
+        <Route path="/profile">
+          <RequireAuth><Profile /></RequireAuth>
         </Route>
 
         <Route path="/login" component={Login} />
