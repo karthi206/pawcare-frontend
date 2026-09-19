@@ -1,87 +1,115 @@
-PawCare AI 🐕
-AI-powered street dog disease detection & outbreak tracking system
+# PawCare AI 🐕
 
-Live Demo Backend API Python React License
+**AI-powered street dog disease detection & outbreak tracking system**
 
-Overview
+[![Live Demo](https://img.shields.io/badge/Live-Vercel-brightgreen)](https://pawcare-frontend-five.vercel.app)
+[![Backend API](https://img.shields.io/badge/API-Render-blue)](https://pawcare-backend-eimp.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.14-blue)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB)](https://reactjs.org/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+## Overview
+
 PawCare AI is a full-stack machine learning application that detects skin diseases in street dogs from photos. It combines computer vision with real-time outbreak detection to help NGOs, veterinarians, and animal rescue organizations identify and track disease patterns in vulnerable dog populations.
 
-Problem: Street dogs suffer from untreated skin diseases. Manual diagnosis requires a vet visit, which is impractical at scale.
-Solution: Instant AI-powered preliminary diagnosis from a photo, with built-in vet verification for accuracy, plus a safety layer that refuses to guess on images it isn't confident about.
+**Problem:** Street dogs suffer from untreated skin diseases. Manual diagnosis requires a vet visit, which is impractical at scale.
+**Solution:** Instant AI-powered preliminary diagnosis from a photo, with built-in vet verification, calibrated confidence, and out-of-distribution rejection for safety.
 
-✨ Features
-🔍 Disease Detection
-Upload dog photos (JPG/PNG)
-AI predicts disease from 6 classes: Dermatitis, Fungal infections, Healthy, Hypersensitivity, Demodicosis, Ringworm
-Calibrated confidence scoring (temperature scaling) with a 70% safety threshold — below threshold, the app returns "unable to classify" instead of a guess
-Out-of-distribution (OOD) detection via Mahalanobis distance on the model's feature space — catches non-dog/garbage images even when the classifier itself is confidently wrong
-Dog detection gate (ImageNet-based, rejects non-dog photos before the disease model runs)
-👥 Multi-Role Authentication
-User: Report cases, view results, request adoptions
-Vet: Approve registrations, verify diagnoses, provide corrections
-Admin: Manage users, approve vets, export training data, add pets, manage NGO directory
-JWT-based auth stored in httpOnly cookies (not browser storage) with CSRF double-submit protection; persisted in Neon Postgres
-📋 Case Management
-Complete case history with photo viewing
-Vet confirmation/correction workflow
-Status tracking: pending → vet_confirmed → resolved
-Human-in-the-loop data pipeline (vet corrections become training data)
-🗺️ Outbreak Detection
-GPS-based clustering using single-linkage grouping (not simple radius matching) over a rolling 14-day window
-Evidence-weighted scoring per case (vet-confirmed cases weighted higher than AI-only, uncertain predictions weighted lowest, "Healthy" cases excluded) — a cluster only fires once weighted score crosses a threshold
-Real-time cluster visualization (Leaflet maps)
-Auto-notifies NGOs
-📱 Offline Support
-Case uploads queue in browser (localStorage)
-Auto-syncs when connection returns
-Smart retry logic (distinguishes permanent vs transient failures)
-🐾 Pet Adoption Portal
-Admin adds dogs to adoption database
-Users browse and request adoption
-NGOs notified and contact adopters directly
-🌍 NGO Locator & Management
-Admin-curated Verified Partners directory
-Live discovery of nearby shelters/vets/NGOs via OpenStreetMap Overpass API (no API key needed, 10-minute in-memory cache)
-Tabbed view separating verified partners from live discoveries
-Automatic outbreak notifications
-✉️ Vet Registration Emails
-Vet sign-ups trigger an admin notification email; admin approval/rejection is meant to trigger a decision email to the vet (Resend API) — currently broken, see Known Limitations
+---
 
-🏗️ Tech Stack
-Layer	Technology	Details
-Frontend	React 18 + TypeScript	Vite build, Shadcn UI, Leaflet maps, TanStack Query, wouter routing
-Backend	Flask (Python)	httpOnly-cookie JWT auth + CSRF, CORS, REST API
-ML Model	MobileNetV2 ONNX	Transfer learning, 6 disease classes, 96.77% test accuracy, temperature-calibrated
-Database	Neon Postgres	Persistent, free tier
-Image Storage	Cloudinary	Persistent cloud storage, no local disk fallback
-| Deployment | Render + Vercel | Backend on Render, frontend on Vercel, connected via a Vercel rewrite proxy so auth cookies stay first-party |
+## ✨ Features
 
-🚀 Live Demo
-Try it now:
+### 🔍 Disease Detection
+- Upload dog photos (JPG/PNG)
+- AI predicts disease from 6 classes: Dermatitis, Fungal infections, Healthy, Hypersensitivity, Demodicosis, Ringworm
+- Temperature-scaled confidence calibration (T=1.5525) with a data-justified 0.70 minimum confidence threshold
+- Out-of-distribution (OOD) detection via Mahalanobis distance on penultimate-layer features — rejects garbage/unrecognizable images even when the classifier itself would report high confidence
+- Dog detection gate (ImageNet-based, rejects non-dog photos)
 
-Frontend: https://pawcare-frontend-five.vercel.app
-Backend API: https://pawcare-backend-eimp.onrender.com
-Demo Credentials
-Admin: admin / admin123 (or set your own)
-Test User: Create a new account
-Quick Test Flow
-Sign up as a user
-Upload a dog photo → see AI prediction (or an "unable to classify" / "not recognized" response if the image is unclear or not a dog)
-Sign up as a vet → wait for admin approval
-As vet, confirm/correct diagnoses
-As admin, export vet corrections
-Request pet adoption as user
-🏃 Quick Start (Local Development)
-Note: Frontend and backend are in separate GitHub repositories. You need to clone and run both.
+### 👥 Multi-Role Authentication
+- **User:** Report cases, view results, request adoptions
+- **Vet:** Approve registrations, verify diagnoses, provide corrections
+- **Admin:** Manage users, approve vets, export training data, add pets
+- JWT stored in httpOnly cookies (not localStorage) with CSRF double-submit protection, persisted in Neon Postgres
 
-Prerequisites
-Python 3.8+
-Node.js 16+
-Git
-Backend Setup (Separate Repo)
+### 📋 Case Management
+- Complete case history with photo viewing
+- Vet confirmation/correction workflow
+- Status tracking: pending → vet_confirmed → resolved
+- Human-in-the-loop data pipeline (vet corrections become training data)
+
+### 🗺️ Outbreak Detection
+- GPS-based clustering (single-linkage, Haversine distance) within a rolling 14-day window
+- Evidence-weighted scoring per case (vet-confirmed > confident AI > uncertain AI; "Healthy" cases excluded)
+- Cluster fires only with ≥2 cases and weighted score ≥2.0, tagged `confirmed_outbreak` vs `possible_cluster`
+- Real-time cluster visualization (Leaflet maps)
+- Auto-notifies NGOs, with a per-NGO/per-admin cooldown to prevent notification spam
+
+### 📱 Offline Support
+- Case uploads queue in browser (localStorage)
+- Auto-syncs when connection returns
+- Smart retry logic (distinguishes permanent vs transient failures)
+
+### 🐾 Pet Adoption Portal
+- Admin adds dogs to adoption database
+- Users browse and request adoption
+- NGOs notified and contact adopters directly
+
+### 🌍 NGO Locator & Management
+- Map view of nearby verified NGOs, plus live discovery of shelters/vets via OpenStreetMap Overpass
+- Automatic outbreak notifications
+- Admin-managed verified NGO database
+
+---
+
+## 🏗️ Tech Stack
+
+| Layer | Technology | Details |
+|---|---|---|
+| **Frontend** | React 18 + TypeScript | Vite build, wouter routing, TanStack Query, Tailwind + shadcn/ui, Leaflet maps |
+| **Backend** | Flask (Python) | Blueprint-organized routes, JWT auth (cookie-based), CORS, REST API |
+| **ML Model** | MobileNetV2 ONNX (dual-output: logits + pooled features) | Transfer learning, 6 disease classes, 96.77% test accuracy |
+| **Database** | Neon Postgres | Persistent, free tier |
+| **Image Storage** | Cloudinary | Persistent cloud storage, free tier — no local disk fallback |
+| **Deployment** | Render + Vercel | Backend on Render, frontend on Vercel (via a rewrite proxy for first-party cookies) |
+
+---
+
+## 🚀 Live Demo
+
+**Try it now:**
+- **Frontend:** https://pawcare-frontend-five.vercel.app
+- **Backend API:** https://pawcare-backend-eimp.onrender.com
+
+### Demo Credentials
+- **Admin:** set via `FIXED_ADMIN_USERNAME` / `FIXED_ADMIN_PASSWORD` env vars
+- **Test User:** Create a new account
+
+### Quick Test Flow
+1. Sign up as a user
+2. Upload a dog photo → see AI prediction (or a graceful "not a dog" / "unable to classify" response)
+3. Sign up as a vet → wait for admin approval
+4. As vet, confirm/correct diagnoses
+5. As admin, export vet corrections
+6. Request pet adoption as user
+
+---
+
+## 🏃 Quick Start (Local Development)
+
+**Note:** Frontend and backend are in **separate GitHub repositories**. You need to clone and run both.
+
+### Prerequisites
+- Python 3.8+
+- Node.js 16+
+- Git
+
+### Backend Setup (Separate Repo)
+
+```bash
 # Clone backend repo
-git clone <backend-repo-url>
-cd pawcare-backend
+git clone https://github.com/karthi206/Pawcare-backend.git
+cd Pawcare-backend
 
 # Create virtual environment
 python -m venv venv
@@ -90,21 +118,28 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Download pre-trained model files (in model/ folder)
-# Required: pawcare_mobilenetv2_with_features.onnx + pawcare_mobilenetv2_with_features.onnx.data,
-#           class_means.npy, cov_inv.npy, general_imagenet_model.onnx
-# (Download from your training Colab or cloud storage)
+# Model files already live in model/:
+# pawcare_mobilenetv2_with_features.onnx (+ .onnx.data), general_imagenet_model.onnx,
+# class_means.npy, cov_inv.npy
 
-# Set environment variables
-export FLASK_ENV=development
-export JWT_SECRET_KEY=your-secret-key-here
-export DATABASE_URL=sqlite:///cases.db  # Local SQLite for dev
+# Set environment variables (create a .env file — it's auto-loaded)
+JWT_SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///cases.db  # Local SQLite for dev
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+FIXED_ADMIN_USERNAME=admin
+FIXED_ADMIN_PASSWORD=set-a-password
 
 # Run Flask
 python app.py
-Backend runs at: http://localhost:5000
+```
 
-Frontend Setup (Separate Repo)
+Backend runs at: `http://localhost:5000`
+
+### Frontend Setup (Separate Repo)
+
+```bash
 # Clone frontend repo (in a new terminal/folder)
 git clone <frontend-repo-url>
 cd pawcare-frontend
@@ -114,168 +149,257 @@ npm install
 
 # Run dev server
 npm run dev
-Frontend runs at: http://localhost:5173
+```
 
-By default the frontend calls the API at the relative path /api, routed through the local dev server; in production this is routed through Vercel's rewrite proxy to Render, which keeps the auth cookie first-party. You generally don't need to set VITE_API_URL unless pointing at a non-default backend.
+Frontend runs at: `http://localhost:5173`
 
-📦 Deployment
-Backend Deployment (Render)
-Push pawcare-backend repo to GitHub
-In Render dashboard: Connect GitHub repo
-Set environment variables:
-DATABASE_URL=postgresql://user:pass@host/dbname  # From Neon
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
-JWT_SECRET_KEY=<generate-strong-random-key>
-FIXED_ADMIN_USERNAME=admin
-FIXED_ADMIN_PASSWORD=<set-password>
-RESEND_API_KEY=<resend-api-key>
-ADMIN_EMAIL=<admin-inbox-for-vet-notifications>
-Deploy
-Backend live at: https://pawcare-backend-eimp.onrender.com
+---
 
-Frontend Deployment (Vercel)
-Push pawcare-frontend repo to GitHub
-In Vercel dashboard: Connect GitHub repo
-vercel.json handles the /api/:path* rewrite proxy to the backend — confirm the target matches your Render URL
-Deploy
-Frontend live at: https://pawcare-frontend-five.vercel.app
+## 📦 Deployment
 
-📊 Model Performance
-Architecture: MobileNetV2 transfer learning, exported to ONNX
-Dataset: 4,315 images across 6 disease classes (Kaggle), predefined 3022/860/433 train/valid/test split
-Test accuracy: 96.77% on the held-out 433-image test set (per-class F1: 0.93–0.995)
-Calibration: Temperature scaling (T=1.5525) corrects raw model overconfidence — mean confidence moved from 0.974 (overconfident) to 0.948 (slightly underconfident, a safer direction to err)
-Confidence threshold: 70% — accuracy is 98%+ above this threshold vs. ~75% below it
-OOD detection: Mahalanobis distance on 1280-dim penultimate features catches inputs (blurry, non-dog, noise) that don't resemble the training distribution, before classification even runs
-Inference time: <100ms per image (ONNX)
-Limitations
-Confusion between visually similar classes (Dermatitis ↔ Ringworm) accounts for most remaining errors
-Model has not yet been benchmarked against an external/independent dataset — current accuracy is measured on a held-out split of the same source dataset
-Not suitable for real-time triage without veterinary oversight; every result is explicitly labeled a possible condition, not a diagnosis
-🔐 Security Considerations
-✅ JWT authentication stored in httpOnly cookies (not localStorage), with CSRF double-submit protection
-✅ Role-based access control (user/vet/admin), enforced both in frontend routing and backend route decorators
-✅ Secure password hashing (bcrypt)
-✅ CORS configured for trusted origins only
-✅ SQL injection protection via SQLAlchemy ORM
-✅ Image upload validation: extension allowlist, MIME check, Pillow integrity check, dimension bounds
-✅ Rate limiting on the NGO notification endpoint
-✅ GPS coordinates used for NGO search are never persisted to disk or DB
-⚠️ Rate limiting not yet applied broadly across the API (recommended for production)
-🛠️ API Endpoints
-Authentication
-POST /auth/register — Create new user/vet account
-POST /auth/login — Login
-GET /auth/me — Get current user
-POST /auth/logout — Logout
-Cases
-POST /upload — Upload dog photo & get diagnosis (returns possible_condition, unable_to_classify, or not_recognized)
-GET /cases — List cases (authenticated users only; own cases unless vet/admin)
-GET /cases/<id> — Get case details (authenticated only)
-PATCH /cases/<id>/status — Vet confirms/corrects diagnosis
-GET /clusters — Get outbreak clusters
-Pets (Adoption)
-GET /pets — List available pets
-POST /pets — Admin adds pet (requires auth)
-POST /pets/<id>/adopt — User requests adoption
-Admin
-GET /admin/pending-vets — List pending vet applications
-POST /admin/vets/<id>/approve — Approve vet
-POST /admin/vets/<id>/reject — Reject vet
-GET /admin/export-corrections — Export vet-corrected cases (for retraining)
-NGOs
-GET /ngos — List verified partner NGOs
-POST /ngos — Admin creates NGO (admin-only)
-POST /ngos/<id>/notify — Notify NGO of outbreak
-GET /ngos/nearby — Verified partners near a location (Haversine)
-GET /api/ngos/live-nearby — Live shelters/vets/NGOs via OpenStreetMap Overpass
-📁 Project Structure
-Backend Repo (pawcare-backend)
-pawcare-backend/
-├── app.py                     # Flask app & all routes
+### Backend Deployment (Render)
+
+1. Push this repo to GitHub
+2. In Render dashboard: Connect GitHub repo
+3. Set environment variables:
+   ```
+   DATABASE_URL=postgresql://user:pass@host/dbname  # From Neon
+   CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=your-api-key
+   CLOUDINARY_API_SECRET=your-api-secret
+   JWT_SECRET_KEY=<generate-strong-random-key>
+   FIXED_ADMIN_USERNAME=admin
+   FIXED_ADMIN_PASSWORD=<set-password>
+   RESEND_API_KEY=<your-resend-key>
+   ADMIN_EMAIL=<admin-notification-inbox>
+   ```
+4. Deploy
+
+**Backend live at:** https://pawcare-backend-eimp.onrender.com
+
+### Frontend Deployment (Vercel)
+
+1. Push `pawcare-frontend` repo to GitHub
+2. In Vercel dashboard: Connect GitHub repo
+3. Set environment variable:
+   ```
+   VITE_API_URL=/api
+   ```
+   (Requests are routed through Vercel's rewrite proxy so the httpOnly auth cookie stays first-party — do not point this at the Render URL directly.)
+4. Deploy
+
+**Frontend live at:** https://pawcare-frontend-five.vercel.app
+
+---
+
+## 📊 Model Performance
+
+- **Architecture:** MobileNetV2 transfer learning, dual-output ONNX export (class logits + 1280-dim pooled features)
+- **Dataset:** Kaggle "Dog's Skin Diseases Image Dataset" — 4,315 images across 6 classes, predefined train/valid/test split (3022/860/433)
+- **Test accuracy:** 96.77% (419/433) on the held-out test set, per-class F1 ranging 0.93–0.995
+- **Calibration:** Temperature scaling (T=1.5525), fit via LBFGS on validation logits
+- **Confidence threshold:** 0.70, chosen because test-set accuracy was only ~75% below this threshold vs. 98%+ at/above it
+- **OOD detection:** Mahalanobis distance on pooled features vs. per-class training means (threshold 75.0) — catches inputs the classifier would otherwise confidently mislabel
+- **Inference time:** <100ms per image (ONNX Runtime)
+
+### Limitations
+- Even at 96.77% accuracy, the model still misclassifies confidently in a minority of cases — vet verification remains the safety net, not a formality
+- Model trained only on the six specific dog skin conditions in the dataset — no independent external validation dataset has been benchmarked yet
+- Not suitable for real-time triage without veterinary oversight
+
+---
+
+## 🔐 Security Considerations
+
+- ✅ JWT authentication in httpOnly cookies (not localStorage) with CSRF double-submit protection, 24h expiry
+- ✅ Role-based access control (user/vet/admin), enforced server-side on every protected route
+- ✅ Secure password hashing
+- ✅ CORS configured for trusted origins only
+- ✅ SQL injection protection via SQLAlchemy ORM
+- ✅ Image upload validation: extension allowlist, MIME check, Pillow verification, dimension bounds
+- ✅ Cloudinary-only image storage — no local disk fallback (returns 502 if upload fails, rather than persisting locally)
+- ✅ Per-endpoint cooldown on NGO outbreak notifications
+- ⚠️ No general-purpose rate limiting across the API (e.g. login/register are not throttled) — recommended before scaling beyond a demo/portfolio deployment
+
+---
+
+## 🛠️ API Endpoints
+
+### Authentication
+- `POST /auth/register` — Create new user/vet account
+- `POST /auth/login` — Login
+- `POST /auth/logout` — Logout
+- `GET /auth/me` — Get current user
+- `PATCH /auth/profile` — Update profile
+- `PATCH /auth/password` — Change password
+
+### Cases
+- `POST /upload` — Upload dog photo & get diagnosis
+- `GET /uploads/<filename>` — Serve an uploaded image
+- `GET /cases` — List cases (auth required)
+- `GET /cases/<id>` — Get case details (auth required)
+- `PATCH /cases/<id>/status` — Vet confirms/corrects diagnosis
+- `GET /clusters` — Get outbreak clusters
+
+### Pets (Adoption)
+- `GET /pets` — List available pets
+- `POST /pets` — Admin adds pet (requires auth)
+- `POST /pets/<id>/adopt` — User requests adoption
+
+### Admin
+- `GET /admin/pending-vets` — List pending vet applications
+- `POST /admin/vets/<id>/approve` — Approve vet (sends decision email)
+- `POST /admin/vets/<id>/reject` — Reject vet (sends decision email)
+- `GET /admin/export-corrections` — Export vet-corrected cases (for retraining)
+
+### NGOs
+- `GET /ngos` — List verified NGOs
+- `GET /ngos/nearby` — Nearby verified NGOs (Haversine distance)
+- `GET /ngos/live-nearby` — Live shelter/vet/NGO discovery via OpenStreetMap Overpass
+- `POST /ngos` — Admin creates NGO
+- `POST /ngos/<id>/notify` — Notify NGO of outbreak (cooldown-limited)
+
+### Geocoding
+- `GET /geocode/reverse` — Reverse geocode coordinates to an address
+
+Every route above is also available under an `/api/...` prefix (e.g. `/api/auth/login`), for environments where the frontend proxy expects an `/api` base path.
+
+---
+
+## 📁 Project Structure
+
+### Backend Repo (`Pawcare-backend`)
+```
+Pawcare-backend/
+├── app.py                     # Flask app factory: config, CORS, JWT error handlers, blueprint registration
+├── config.py                  # Env-backed Config class, .env loading, JWT secret enforcement
+├── extensions.py              # Shared db / jwt extension instances
+├── helpers.py                 # Shared helper functions
+├── ml.py                      # Loads ONNX models + OOD reference arrays at startup
 ├── models.py                  # SQLAlchemy models (Case, User, NGO, NGONotification, Pet, AdoptionRequest)
-├── clustering.py              # Outbreak detection (single-linkage, weighted scoring)
-├── email_service.py           # Resend-based vet registration/decision emails
-├── clean_duplicate_cases.py   # Case dedup utility (dry-run by default, --execute to apply)
-├── requirements.txt           # Python dependencies
+├── clustering.py              # Outbreak detection (weighted, time-windowed Haversine clustering)
+├── email_service.py           # Resend API integration (vet registration/decision emails)
+├── clean_duplicate_cases.py   # Standalone dedup script (dry-run by default, --execute to apply)
+├── startup.py                 # DB migrations + fixed-admin seeding, run at app startup
+├── requirements.txt
+├── routes/
+│   ├── auth.py                 # Register/login/logout/me/profile/password
+│   ├── cases.py                # Upload, case listing, status updates, clusters
+│   ├── ngos.py                 # NGO CRUD, nearby search, live discovery, notify
+│   ├── pets.py                 # Pet listing, adoption requests
+│   ├── admin.py                # Vet approval workflow, corrections export
+│   └── geocode.py              # Reverse geocoding
+├── services/
+│   ├── geocoding.py             # Geocoding provider integration
+│   └── osm.py                   # OpenStreetMap Overpass integration
+├── utils/
+│   ├── geo.py                   # Haversine + geo helpers
+│   └── validation.py            # Image/input validation
 ├── model/
-│   ├── pawcare_mobilenetv2_with_features.onnx        # Trained disease detector
-│   ├── pawcare_mobilenetv2_with_features.onnx.data
-│   ├── class_means.npy / cov_inv.npy                 # OOD reference stats
-│   ├── general_imagenet_model.onnx                   # Dog detection gate
-│   └── cnn_model.py            # Model loading, calibration, OOD + inference logic
+│   ├── pawcare_mobilenetv2_with_features.onnx (+ .onnx.data)  # Disease detector, dual-output
+│   ├── general_imagenet_model.onnx                            # Dog detection gate
+│   ├── class_means.npy / cov_inv.npy                          # Mahalanobis OOD reference
+│   └── cnn_model.py                                            # Model loading & inference logic
 ├── scripts/archive/            # Legacy one-off scripts, kept out of active code
+├── uploads/                    # Temp folder for image processing
 └── README.md
-Frontend Repo (pawcare-frontend)
+```
+
+### Frontend Repo (`pawcare-frontend`)
+```
 pawcare-frontend/
 ├── client/src/
 │   ├── components/
 │   │   ├── CaseMap.tsx             # Outbreak clustering map (Leaflet)
 │   │   ├── ErrorState.tsx          # Reusable error UI
 │   │   ├── RequireAuth.tsx         # Route guard for logged-in-only pages
-│   │   ├── layout/AppLayout.tsx    # Nav/header/footer
-│   │   └── ui/                     # shadcn components
+│   │   ├── layout/AppLayout.tsx    # Nav, header/footer
+│   │   └── ui/                     # shadcn/ui primitives
+│   ├── pages/
+│   │   ├── Landing.tsx, DiseaseDetection.tsx, NgoLocator.tsx,
+│   │   ├── CaseTracker.tsx, AdoptionPortal.tsx, AdminPanel.tsx,
+│   │   └── Login.tsx, Register.tsx, not-found.tsx
 │   ├── hooks/
-│   │   ├── use-auth.tsx            # Auth context (cookie-based)
+│   │   ├── use-auth.tsx            # Auth context & cookie-based session state
 │   │   └── use-toast.ts
 │   ├── lib/
-│   │   ├── api-client.ts           # Cookie/CSRF-aware fetch wrapper, retries, single-flight dedup
-│   │   ├── config.ts                # API_URL resolution
-│   │   └── queryClient.ts / utils.ts
-│   ├── pages/                       # Landing, DiseaseDetection, NgoLocator, CaseTracker,
-│   │                                 # AdoptionPortal, Login, Register, AdminPanel, not-found
-│   ├── App.tsx
+│   │   ├── api-client.ts           # Fetch wrapper: cookies, CSRF header, retries, single-flight dedup
+│   │   ├── config.ts                # API_URL (relative /api by default)
+│   │   └── queryClient.ts, utils.ts
+│   ├── App.tsx                      # Router, RequireAuth-wrapped routes
 │   └── main.tsx
-├── vercel.json                # Rewrite proxy config (/api/:path*)
-├── package.json / vite.config.ts / tailwind.config.ts
-└── README.md
-🚧 Known Limitations
-Issue	Status	Workaround
-Vet approval/rejection emails not sent	Bug — email call is placed after the route's return statement (dead code)	Vets are notified manually for now; fix planned
-No password reset	Not implemented	Contact admin
-No email verification	Not implemented	Manual approval workflow
-Rate limiting incomplete	Only applied to NGO notification endpoint	Monitor API usage
-Mobile app not available	Out of scope	Responsive web design works well
-Model retraining manual	Not automated	Export vet corrections, retrain in Colab
-External validation not yet run	Accuracy measured on held-out split of source dataset only	Planned: benchmark against an independent dataset
-🚀 Future Enhancements
-Mobile app (React Native) with camera integration
-Automated model retraining pipeline
-Real-time push notifications
-Vet clinic dashboard for bulk case management
-Donation integration to fund NGO work
-Multi-language support
-PDF report generation
-Fix vet decision email dead-code bug
-Run external validation on an independent dataset
-💡 How the ML Pipeline Works
-User uploads dog photo
-Dog detection gate (ImageNet ONNX) → rejects non-dogs with 422 error
-Out-of-distribution check (Mahalanobis distance on feature space) → rejects images too far from the training distribution ("not recognized"), catching cases the confidence score alone would miss
-Disease detector (MobileNetV2 ONNX) → predicts disease + calibrated confidence (temperature scaling)
-Confidence threshold (70%) → predictions below threshold are returned as "unable to classify" rather than a guess
-Case saved to Neon database with Cloudinary photo URL
-Vet verification → vet confirms/corrects the AI prediction
-Human-in-the-loop → vet corrections exported as training data
-Model improves → retrain on vet-corrected cases in Colab
+├── components.json, tsconfig.json, tailwind.config.ts, postcss.config.js
+├── vite.config.ts, vercel.json (rewrite proxy config)
+└── package.json
+```
 
+---
 
-👤 Author
-Karthi — 3rd year IT student
-Built: August 2026
+## 🚧 Known Limitations
 
-🙏 Acknowledgments
-MobileNetV2 transfer learning architecture
-ONNX Runtime for optimized inference
-Neon for free Postgres hosting
-Cloudinary for free image CDN
-Render for free backend hosting
-Vercel for free frontend hosting
-OpenStreetMap Overpass API for live NGO/shelter discovery
-Street dog rescue organizations for inspiration
-📧 Questions or Issues?
+| Issue | Status | Workaround |
+|---|---|---|
+| No password reset | Not implemented | Contact admin |
+| No email verification | Not implemented | Manual approval workflow |
+| General API rate limiting missing | Security gap (NGO notify has a cooldown; other routes don't) | Monitor API usage |
+| No independent external validation dataset benchmarked | ML gap | Sourcing plan drafted, not yet executed |
+| Mobile app not available | Out of scope | Responsive web design works well |
+| Model retraining manual | Not automated | Export vet corrections, retrain in Colab |
+
+---
+
+## 🚀 Future Enhancements
+
+- Mobile app (React Native) with camera integration
+- Automated model retraining pipeline
+- Real-time push notifications
+- Vet clinic dashboard for bulk case management
+- Donation integration to fund NGO work
+- Multi-language support
+- PDF report generation
+- General-purpose API rate limiting
+
+---
+
+## 💡 How the ML Pipeline Works
+
+1. **User uploads dog photo**
+2. **Dog detection gate** (ImageNet ONNX) → rejects non-dogs with a 422 error
+3. **Disease detector** (dual-output MobileNetV2 ONNX) → predicts disease + raw confidence + pooled features
+4. **Out-of-distribution check** (Mahalanobis distance on pooled features) → flags inputs too far from the training distribution as `not_recognized`, before classification is trusted
+5. **Temperature-scaled calibration + 0.70 confidence threshold** → flags uncertain predictions as `unable_to_classify` rather than guessing
+6. **Case saved** to Neon database with Cloudinary photo URL
+7. **Vet verification** → vet confirms/corrects the AI prediction
+8. **Human-in-the-loop** → vet corrections exported as training data
+9. **Model improves** → retrain on vet-corrected cases in Colab
+
+---
+
+## 📝 License
+
+MIT License — see LICENSE file
+
+---
+
+## 👤 Author
+
+**Karthi** — 3rd year CS student
+
+---
+
+## 🙏 Acknowledgments
+
+- **MobileNetV2** transfer learning architecture
+- **ONNX Runtime** for optimized inference
+- **Neon** for free Postgres hosting
+- **Cloudinary** for free image CDN
+- **Render** for free backend hosting
+- **Vercel** for free frontend hosting
+- **OpenStreetMap / Overpass API** for live NGO discovery
+- Street dog rescue organizations for inspiration
+
+---
+
+## 📧 Questions or Issues?
+
 Open an issue on GitHub or reach out directly.
-
-The app is live and fully functional — try it now!
